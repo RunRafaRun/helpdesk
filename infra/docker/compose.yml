@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16
+    container_name: helpdesk-db
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: apppass
+      POSTGRES_DB: helpdesk
+    ports:
+      - "5433:5432"
+    volumes:
+      - helpdesk_pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ../../apps/api
+    container_name: helpdesk-api
+    environment:
+      NODE_ENV: development
+      PORT: "8080"
+      JWT_SECRET: "dev-secret-change-me"
+      DATABASE_URL: "postgresql://app:apppass@db:5432/helpdesk?schema=public"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    volumes:
+      - ../../apps/api:/app
+      - /app/node_modules
+
+  web:
+    build:
+      context: ../../apps/web
+    container_name: helpdesk-web
+    environment:
+      VITE_API_BASE: "http://localhost:8080"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ../../apps/web:/app
+      - /app/node_modules
+
+volumes:
+  helpdesk_pgdata:
