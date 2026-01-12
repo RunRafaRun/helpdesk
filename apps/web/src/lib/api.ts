@@ -1,4 +1,4 @@
-export type Me = { id: string; usuario: string; roles: string[]; permisos: string[] } | null;
+export type Me = { id: string; usuario: string; role: string; roles: string[]; permisos: string[] } | null;
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
 
