@@ -4,8 +4,9 @@ import { AuthModule } from "./auth/auth.module";
 import { AdminModule } from "./admin/admin.module";
 import { HealthModule } from "./health/health.module";
 import { TareasModule } from "./tareas/tareas.module";
+import { ClienteFichaModule } from './cliente-ficha/cliente-ficha.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, AdminModule, HealthModule, TareasModule],
+  imports: [PrismaModule, AuthModule, AdminModule, HealthModule, TareasModule,ClienteFichaModule],
 })
 export class AppModule {}

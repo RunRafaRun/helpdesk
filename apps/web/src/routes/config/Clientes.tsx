@@ -104,8 +104,9 @@ export default function Clientes() {
                 <tr key={c.id}>
                   <td>{c.codigo}</td>
                   <td>{c.descripcion ?? "-"}</td>
-                  <td style={{ width: 240 }}>
+                  <td style={{ width: 240, display: 'flex', gap: 8 }}>
                     <button className="btn" onClick={() => navigate(`/config/clientes/${c.id}`)}>Editar</button>
+                    <button className="btn" onClick={() => navigate(`/clientes/${c.id}/ficha`)}>Ficha</button>
                   </td>
                 </tr>
               ))}

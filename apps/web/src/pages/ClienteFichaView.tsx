@@ -21,7 +21,7 @@ const ClienteFichaView: React.FC = () => {
 
   const fetchCliente = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`http://localhost:8080/admin/clientes/${clienteId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -47,7 +47,7 @@ const ClienteFichaView: React.FC = () => {
 
   const fetchItems = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
 
       const response = await fetch(
         `http://localhost:8080/clientes/${clienteId}/${endpoints[activeTab]}`,
@@ -68,7 +68,7 @@ const ClienteFichaView: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
 
       const url = editingItem
         ? `http://localhost:8080/clientes/${clienteId}/${endpoints[activeTab]}/${editingItem.id}`
@@ -104,7 +104,7 @@ const ClienteFichaView: React.FC = () => {
     if (!confirm('¿Está seguro de eliminar este registro?')) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
 
       await fetch(`http://localhost:8080/clientes/${clienteId}/${endpoints[activeTab]}/${id}`, {
         method: 'DELETE',

@@ -1,3 +1,4 @@
+import ClienteFichaView from "../pages/ClienteFichaView";
 import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../lib/auth";
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="config/clientes/:id" element={<ClienteEdit />} />
         <Route path="config/modulos" element={<Modulos />} />
         <Route path="config/roles" element={<Roles />} />
+	<Route path="clientes/:clienteId/ficha" element={<ClienteFichaView />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

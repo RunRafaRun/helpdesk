@@ -500,6 +500,7 @@ return (
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn" onClick={() => navigate(-1)}>Volver</button>
           <button className="btn" onClick={loadCliente} disabled={loadingCliente}>Refrescar</button>
+          <button className="btn primary" onClick={() => navigate(`/clientes/${id}/ficha`)}>Ver Ficha</button>
         </div>
       </div>
 
