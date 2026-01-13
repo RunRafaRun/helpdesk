@@ -56,7 +56,7 @@ export class AdminService {
     if (!cliente) throw new NotFoundException(`Cliente no encontrado: ${dto.clienteCodigo}`);
 
     const hash = await bcrypt.hash(dto.password, 10);
-    return this.prisma.usuarioCliente.create({
+    return this.prisma.clienteUsuario.create({
       data: {
         clienteId: cliente.id,
         nombre: dto.nombre,

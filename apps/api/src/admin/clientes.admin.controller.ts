@@ -170,7 +170,7 @@ class CreateSoftwareDto {
   tipo!: "GP"|"PM"|"PLATAFORMA"|"OTRO";
   nombre!: string;
   version?: string | null;
-  modulo?: string | null;
+  moduloId?: string | null;
   notas?: string | null;
 }
 
@@ -193,8 +193,8 @@ class CreateComentarioDto {
 }
 
 class CreateReleasePlanDto {
-  tipo!: "RELEASE"|"HOTFIX";
-  titulo!: string;
+  releaseId!: string;
+  hotfixId?: string | null;
   fechaPrevista?: string | null;
   fechaInstalada?: string | null;
   estado?: "PLANIFICADO"|"EN_CURSO"|"INSTALADO"|"CANCELADO";
@@ -214,9 +214,52 @@ export class ClientesAdminController {
   @Get()
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
   async list() {
-    return this.prisma.cliente.findMany({
-      select: { id: true, codigo: true, descripcion: true, logotipo: true, jefeProyecto1: true, jefeProyecto2: true, createdAt: true, updatedAt: true },
+    const clientes = await this.prisma.cliente.findMany({
+      select: {
+        id: true,
+        codigo: true,
+        descripcion: true,
+        logotipo: true,
+        jefeProyecto1: true,
+        jefeProyecto2: true,
+        createdAt: true,
+        updatedAt: true,
+        releasesPlan: {
+          where: { estado: "INSTALADO" },
+          orderBy: [{ fechaPrevista: "desc" }],
+          take: 1,
+          include: {
+            release: { select: { codigo: true } },
+            hotfix: { select: { codigo: true } },
+          },
+        },
+      },
       orderBy: { codigo: "asc" },
+    });
+
+    // Transform to include currentRelease field
+    return clientes.map((c) => ({
+      id: c.id,
+      codigo: c.codigo,
+      descripcion: c.descripcion,
+      logotipo: c.logotipo,
+      jefeProyecto1: c.jefeProyecto1,
+      jefeProyecto2: c.jefeProyecto2,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      currentRelease: c.releasesPlan[0]
+        ? `${c.releasesPlan[0].release?.codigo || ''}${c.releasesPlan[0].hotfix ? `-${c.releasesPlan[0].hotfix.codigo}` : ''}`
+        : null,
+    }));
+  }
+
+  // GET /admin/clientes/by-codigo/:codigo
+  @Get("by-codigo/:codigo")
+  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  async getOneByCodigo(@Param("codigo") codigo: string) {
+    return this.prisma.cliente.findUnique({
+      where: { codigo },
+      select: { id: true, codigo: true, descripcion: true, logotipo: true, jefeProyecto1: true, jefeProyecto2: true, licenciaTipo: true, createdAt: true, updatedAt: true },
     });
   }
 
@@ -235,7 +278,7 @@ export class ClientesAdminController {
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
   async listUsuarios(@Param("id") clienteId: string, @Query("includeInactive") includeInactive?: string) {
     const showInactive = includeInactive === "1" || includeInactive === "true";
-    return this.prisma.usuarioCliente.findMany({
+    return this.prisma.clienteUsuario.findMany({
       where: { clienteId, ...(showInactive ? {} : { activo: true }) },
       select: {
         id: true,
@@ -246,7 +289,6 @@ export class ClientesAdminController {
         tipo: true,
         activo: true,
         recibeNotificaciones: true,
-        recibeTodasLasTareas: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -260,7 +302,7 @@ export class ClientesAdminController {
     if (!dto.password || !dto.password.trim()) {
       throw new BadRequestException("password es obligatorio al crear un usuario");
     }
-    return this.prisma.usuarioCliente.create({
+    return this.prisma.clienteUsuario.create({
       data: {
         clienteId,
         nombre: dto.nombre.trim(),
@@ -271,7 +313,6 @@ export class ClientesAdminController {
         tipo: dto.tipo ?? null,
         activo: dto.activo ?? true,
         recibeNotificaciones: dto.recibeNotificaciones ?? true,
-        recibeTodasLasTareas: dto.recibeTodasLasTareas ?? true,
       },
       select: {
         id: true,
@@ -282,7 +323,6 @@ export class ClientesAdminController {
         tipo: true,
         activo: true,
         recibeNotificaciones: true,
-        recibeTodasLasTareas: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -300,12 +340,11 @@ export class ClientesAdminController {
       ...(dto.telefono === undefined ? {} : { telefono: dto.telefono ?? null }),
       ...(dto.tipo === undefined ? {} : { tipo: dto.tipo ?? null }),
       ...(dto.recibeNotificaciones === undefined ? {} : { recibeNotificaciones: dto.recibeNotificaciones }),
-      ...(dto.recibeTodasLasTareas === undefined ? {} : { recibeTodasLasTareas: dto.recibeTodasLasTareas }),
       ...(dto.activo === undefined ? {} : { activo: dto.activo }),
       ...(dto.password === undefined || dto.password === "" ? {} : { password: dto.password }),
     };
 
-    return this.prisma.usuarioCliente.update({
+    return this.prisma.clienteUsuario.update({
       where: { id: usuarioId },
       data,
       select: {
@@ -317,7 +356,6 @@ export class ClientesAdminController {
         tipo: true,
         activo: true,
         recibeNotificaciones: true,
-        recibeTodasLasTareas: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -419,7 +457,7 @@ export class ClientesAdminController {
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
   async createSoftware(@Param("id") clienteId: string, @Body() dto: CreateSoftwareDto) {
     return this.prisma.clienteSoftware.create({
-      data: { clienteId, tipo: dto.tipo as any, nombre: dto.nombre, version: dto.version ?? null, modulo: dto.modulo ?? null, notas: dto.notas ?? null },
+      data: { clienteId, tipo: dto.tipo as any, nombre: dto.nombre, version: dto.version ?? null, moduloId: dto.moduloId ?? null, notas: dto.notas ?? null },
     });
   }
 
@@ -428,7 +466,7 @@ export class ClientesAdminController {
   async updateSoftware(@Param("id") clienteId: string, @Param("softwareId") softwareId: string, @Body() dto: UpdateSoftwareDto) {
     return this.prisma.clienteSoftware.update({
       where: { id: softwareId },
-      data: { tipo: dto.tipo as any, nombre: dto.nombre, version: dto.version ?? null, modulo: dto.modulo ?? null, notas: dto.notas ?? null },
+      data: { tipo: dto.tipo as any, nombre: dto.nombre, version: dto.version ?? null, moduloId: dto.moduloId ?? null, notas: dto.notas ?? null },
     });
   }
 
@@ -578,8 +616,8 @@ export class ClientesAdminController {
     return this.prisma.clienteReleasePlan.create({
       data: {
         clienteId,
-        tipo: dto.tipo as any,
-        titulo: dto.titulo,
+        releaseId: dto.releaseId,
+        hotfixId: dto.hotfixId ?? null,
         fechaPrevista: dto.fechaPrevista ? new Date(dto.fechaPrevista) : null,
         fechaInstalada: dto.fechaInstalada ? new Date(dto.fechaInstalada) : null,
         estado: (dto.estado ?? "PLANIFICADO") as any,
@@ -589,14 +627,14 @@ export class ClientesAdminController {
     });
   }
 
-  @Put(":id/releases/:releaseId")
+  @Put(":id/releases/:releasePlanId")
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
-  async updateRelease(@Param("id") clienteId: string, @Param("releaseId") releaseId: string, @Body() dto: UpdateReleasePlanDto) {
+  async updateRelease(@Param("id") clienteId: string, @Param("releasePlanId") releasePlanId: string, @Body() dto: UpdateReleasePlanDto) {
     return this.prisma.clienteReleasePlan.update({
-      where: { id: releaseId },
+      where: { id: releasePlanId },
       data: {
-        tipo: dto.tipo as any,
-        titulo: dto.titulo,
+        releaseId: dto.releaseId,
+        hotfixId: dto.hotfixId ?? null,
         fechaPrevista: dto.fechaPrevista ? new Date(dto.fechaPrevista) : null,
         fechaInstalada: dto.fechaInstalada ? new Date(dto.fechaInstalada) : null,
         estado: (dto.estado ?? "PLANIFICADO") as any,
