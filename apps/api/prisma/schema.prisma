@@ -7,6 +7,393 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Agente {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  nombre                String
+  usuario               String                 @unique @db.VarChar(50)
+  password              String
+  email                 String?
+  role                  AgenteRole             @default(AGENTE)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  roles                 AgenteRoleAssignment[]
+  clienteComentarios    ClienteComentario[]
+  clienteReleasesPlan   ClienteReleasePlan[]
+  notificacionesMasivas NotificacionMasiva[]
+  tareasAsignadas       Tarea[]                @relation("TareaAsignadaAAgente")
+  tareasCreadas         Tarea[]                @relation("TareaCreadaPorAgente")
+  tareasRevisadas       Tarea[]                @relation("TareaRevisadaPorAgente")
+  eventos               TareaEvento[]          @relation("EventoCreadoPorAgente")
+}
+
+model Cliente {
+  id             String                 @id @default(uuid()) @db.Uuid
+  codigo         String                 @unique @db.VarChar(50)
+  descripcion    String?
+  logotipo       String?
+  jefeProyecto1  String?                @db.VarChar(50)
+  jefeProyecto2  String?                @db.VarChar(50)
+  licenciaTipo   LicenciaTipo?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  centrosTrabajo ClienteCentroTrabajo[]
+  comentarios    ClienteComentario[]
+  conexiones     ClienteConexion[]
+  contactos      ClienteContacto[]
+  releasesPlan   ClienteReleasePlan[]
+  softwares      ClienteSoftware[]
+  tareas         Tarea[]
+  unidades       UnidadComercial[]
+  usuarios       ClienteUsuario[]
+}
+
+model UnidadComercial {
+  id          String               @id @default(uuid()) @db.Uuid
+  codigo      String               @db.VarChar(50)
+  descripcion String?
+  activo      Boolean              @default(true)
+  scope       UnidadComercialScope @default(HOTEL)
+  clienteId   String               @db.Uuid
+  tareas      Tarea[]
+  cliente     Cliente              @relation(fields: [clienteId], references: [id])
+
+  @@unique([clienteId, codigo], name: "clienteId_codigo", map: "uq_unidadcomercial_cliente_codigo")
+  @@index([clienteId, scope])
+}
+
+model ClienteUsuario {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  nombre               String
+  usuario              String                 @unique
+  password             String
+  email                String?
+  telefono             String?
+  tipo                 String?                @db.VarChar(50)
+  activo               Boolean                @default(true)
+  principal            Boolean                @default(false)
+  clienteId            String                 @db.Uuid
+  recibeNotificaciones Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  tareasCreadas        Tarea[]                @relation("TareaCreadaPorCliente")
+  eventos              TareaEvento[]          @relation("EventoCreadoPorCliente")
+  cliente              Cliente                @relation(fields: [clienteId], references: [id])
+  modulos              ClienteUsuarioModulo[]
+
+  @@index([clienteId])
+  @@map("usuario_cliente")
+}
+
+model TipoTarea {
+  id          String  @id @default(uuid()) @db.Uuid
+  codigo      String  @unique @db.VarChar(50)
+  descripcion String?
+  tareas      Tarea[]
+}
+
+model EstadoTarea {
+  id          String  @id @default(uuid()) @db.Uuid
+  codigo      String  @unique @db.VarChar(50)
+  descripcion String?
+  tareas      Tarea[]
+}
+
+model PrioridadTarea {
+  id          String  @id @default(uuid()) @db.Uuid
+  codigo      String  @unique @db.VarChar(50)
+  descripcion String?
+  tareas      Tarea[]
+}
+
+model EstadoPeticion {
+  id          String  @id @default(uuid()) @db.Uuid
+  codigo      String  @unique @db.VarChar(50)
+  descripcion String?
+  tareas      Tarea[]
+}
+
+model Modulo {
+  id               String                 @id @default(uuid()) @db.Uuid
+  codigo           String                 @unique @db.VarChar(80)
+  descripcion      String?
+  clienteSoftwares ClienteSoftware[]
+  tareas           Tarea[]
+  clienteUsuarios  ClienteUsuarioModulo[]
+}
+
+model Release {
+  id              String               @id @default(uuid()) @db.Uuid
+  codigo          String               @unique @db.VarChar(50)
+  descripcion     String?
+  clienteReleases ClienteReleasePlan[]
+  hotfixes        Hotfix[]
+  tareas          Tarea[]
+}
+
+model Hotfix {
+  id              String               @id @default(uuid()) @db.Uuid
+  codigo          String               @db.VarChar(50)
+  descripcion     String?
+  releaseId       String               @db.Uuid
+  clienteReleases ClienteReleasePlan[]
+  release         Release              @relation(fields: [releaseId], references: [id])
+  tareas          Tarea[]
+
+  @@unique([releaseId, codigo])
+}
+
+model Tarea {
+  id                 String          @id @default(uuid()) @db.Uuid
+  titulo             String
+  clienteId          String          @db.Uuid
+  unidadComercialId  String          @db.Uuid
+  tipoId             String          @db.Uuid
+  estadoId           String?         @db.Uuid
+  prioridadId        String          @db.Uuid
+  moduloId           String?         @db.Uuid
+  releaseId          String?         @db.Uuid
+  hotfixId           String?         @db.Uuid
+  reproducido        Boolean         @default(false)
+  creadoPorAgenteId  String?         @db.Uuid
+  creadoPorClienteId String?         @db.Uuid
+  asignadoAId        String?         @db.Uuid
+  revisadoPorId      String?         @db.Uuid
+  estadoPeticionId   String?         @db.Uuid
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  closedAt           DateTime?
+  asignadoA          Agente?         @relation("TareaAsignadaAAgente", fields: [asignadoAId], references: [id], onDelete: Restrict)
+  cliente            Cliente         @relation(fields: [clienteId], references: [id])
+  creadoPorAgente    Agente?         @relation("TareaCreadaPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
+  creadoPorCliente   ClienteUsuario? @relation("TareaCreadaPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
+  estado             EstadoTarea?    @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  estadoPeticion     EstadoPeticion? @relation(fields: [estadoPeticionId], references: [id], onDelete: Restrict)
+  hotfix             Hotfix?         @relation(fields: [hotfixId], references: [id], onDelete: Restrict)
+  modulo             Modulo?         @relation(fields: [moduloId], references: [id], onDelete: Restrict)
+  prioridad          PrioridadTarea  @relation(fields: [prioridadId], references: [id])
+  release            Release?        @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  revisadoPor        Agente?         @relation("TareaRevisadaPorAgente", fields: [revisadoPorId], references: [id], onDelete: Restrict)
+  tipo               TipoTarea       @relation(fields: [tipoId], references: [id])
+  unidadComercial    UnidadComercial @relation(fields: [unidadComercialId], references: [id])
+  eventos            TareaEvento[]
+
+  @@index([clienteId, createdAt])
+  @@index([tipoId, estadoId])
+  @@index([prioridadId])
+  @@index([moduloId])
+}
+
+model TareaEvento {
+  id                 String          @id @default(uuid()) @db.Uuid
+  tareaId            String          @db.Uuid
+  tipo               EventoTipo
+  canal              String?         @db.VarChar(50)
+  asunto             String?
+  cuerpo             String?
+  payload            Json?
+  actorTipo          ActorTipo
+  creadoPorAgenteId  String?         @db.Uuid
+  creadoPorClienteId String?         @db.Uuid
+  visibleEnTimeline  Boolean         @default(true)
+  visibleParaCliente Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  creadoPorAgente    Agente?         @relation("EventoCreadoPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
+  creadoPorCliente   ClienteUsuario? @relation("EventoCreadoPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
+  tarea              Tarea           @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+
+  @@index([tareaId, createdAt])
+  @@index([visibleEnTimeline])
+  @@index([visibleParaCliente])
+}
+
+model ClienteUsuarioModulo {
+  id               String         @id @default(uuid()) @db.Uuid
+  clienteUsuarioId String         @db.Uuid
+  moduloId         String         @db.Uuid
+  clienteUsuario   ClienteUsuario @relation(fields: [clienteUsuarioId], references: [id], onDelete: Cascade)
+  modulo           Modulo         @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteUsuarioId, moduloId])
+  @@map("usuario_cliente_modulo")
+}
+
+model RoleEntity {
+  id          String                 @id @default(uuid()) @db.Uuid
+  codigo      String                 @unique
+  nombre      String
+  descripcion String?
+  createdAt   DateTime               @default(now())
+  agentes     AgenteRoleAssignment[]
+  permisos    RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  codigo      PermisoCodigo    @unique
+  descripcion String?
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         RoleEntity @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model AgenteRoleAssignment {
+  agenteId String     @db.Uuid
+  roleId   String     @db.Uuid
+  agente   Agente     @relation(fields: [agenteId], references: [id], onDelete: Cascade)
+  role     RoleEntity @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([agenteId, roleId])
+}
+
+model ClienteSoftware {
+  id        String              @id @default(uuid()) @db.Uuid
+  clienteId String              @db.Uuid
+  tipo      ClienteSoftwareTipo
+  nombre    String              @db.VarChar(200)
+  version   String?             @db.VarChar(100)
+  moduloId  String?             @db.Uuid
+  notas     String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  cliente   Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  modulo    Modulo?             @relation(fields: [moduloId], references: [id])
+
+  @@unique([clienteId, tipo, nombre], name: "clienteId_tipo_nombre")
+  @@index([clienteId])
+}
+
+model ClienteContacto {
+  id        String   @id @default(uuid()) @db.Uuid
+  clienteId String   @db.Uuid
+  nombre    String   @db.VarChar(200)
+  cargo     String?  @db.VarChar(150)
+  email     String?  @db.VarChar(200)
+  movil     String?  @db.VarChar(50)
+  principal Boolean  @default(false)
+  notas     String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+}
+
+model ClienteConexion {
+  id        String   @id @default(uuid()) @db.Uuid
+  clienteId String   @db.Uuid
+  nombre    String   @db.VarChar(200)
+  endpoint  String?  @db.VarChar(500)
+  usuario   String?  @db.VarChar(150)
+  secretRef String?  @db.VarChar(500)
+  notas     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+}
+
+model ClienteComentario {
+  id        String   @id @default(uuid()) @db.Uuid
+  clienteId String   @db.Uuid
+  agenteId  String   @db.Uuid
+  texto     String
+  destacado Boolean  @default(false)
+  createdAt DateTime @default(now())
+  agente    Agente   @relation(fields: [agenteId], references: [id])
+  cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+}
+
+model ClienteCentroTrabajo {
+  id        String   @id @default(uuid()) @db.Uuid
+  clienteId String   @db.Uuid
+  nombre    String   @db.VarChar(250)
+  baseDatos String?  @db.VarChar(250)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+}
+
+model ClienteReleasePlan {
+  id             String               @id @default(uuid()) @db.Uuid
+  clienteId      String               @db.Uuid
+  releaseId      String               @db.Uuid
+  hotfixId       String?              @db.Uuid
+  fechaPrevista  DateTime?
+  fechaInstalada DateTime?
+  estado         ClienteReleaseEstado @default(PLANIFICADO)
+  agenteId       String?              @db.Uuid
+  detalle        String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  agente         Agente?              @relation(fields: [agenteId], references: [id])
+  cliente        Cliente              @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  hotfix         Hotfix?              @relation(fields: [hotfixId], references: [id])
+  release        Release              @relation(fields: [releaseId], references: [id])
+
+  @@index([clienteId])
+}
+
+model ConfiguracionMail {
+  id                String        @id @default(uuid()) @db.Uuid
+  tipoSeguridad     TipoSeguridad @default(NINGUNO)
+  urlServidor       String?       @db.VarChar(500)
+  puerto            Int?
+  cuentaMail        String?       @db.VarChar(200)
+  usuarioMail       String?       @db.VarChar(200)
+  passwordMail      String?
+  azureClientId     String?       @db.VarChar(200)
+  azureTenantId     String?       @db.VarChar(200)
+  azureClientSecret String?
+  azureAccessToken  String?
+  azureTokenExpiry  DateTime?
+  activo            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model NotificacionMasiva {
+  id             String    @id @default(uuid()) @db.Uuid
+  asunto         String    @db.VarChar(500)
+  cuerpoHtml     String
+  cuerpoTexto    String?
+  clienteIds     String[]  @db.Uuid
+  emailsManuales String[]
+  emailsTo       String[]
+  emailsCc       String[]
+  roleCcId       String?   @db.Uuid
+  adjuntos       Json?
+  programadoAt   DateTime?
+  enviadoPor     String    @db.Uuid
+  estado         String    @default("PENDIENTE") @db.VarChar(50)
+  enviados       Int       @default(0)
+  errores        Int       @default(0)
+  logEnvio       String?
+  retryCount     Int       @default(0)
+  lastRetryAt    DateTime?
+  maxRetries     Int       @default(3)
+  createdAt      DateTime  @default(now())
+  enviadoAt      DateTime?
+  agente         Agente    @relation(fields: [enviadoPor], references: [id])
+
+  @@index([enviadoPor])
+  @@index([createdAt])
+  @@index([estado, programadoAt])
+}
+
 enum AgenteRole {
   ADMIN
   AGENTE
@@ -41,394 +428,27 @@ enum UnidadComercialScope {
   TODOS
 }
 
-model Agente {
-  id        String   @id @default(uuid()) @db.Uuid
-  nombre    String   @db.Text
-  usuario   String   @unique @db.VarChar(50)
-  password  String   @db.Text
-  email     String?  @db.Text
-  role      AgenteRole @default(AGENTE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tareasCreadas   Tarea[] @relation("TareaCreadaPorAgente")
-  tareasAsignadas Tarea[] @relation("TareaAsignadaAAgente")
-  tareasRevisadas Tarea[] @relation("TareaRevisadaPorAgente")
-  eventos         TareaEvento[] @relation("EventoCreadoPorAgente")
-  roles AgenteRoleAssignment[]
-
-  // Ficha de Cliente (comentarios y planificación de releases/hotfix)
-  clienteComentarios ClienteComentario[]
-  clienteReleasesPlan ClienteReleasePlan[]
-}
-
-model Cliente {
-  id            String   @id @default(uuid()) @db.Uuid
-  codigo        String   @unique @db.VarChar(50)
-  descripcion   String?  @db.Text
-  logotipo      String?  @db.Text
-  jefeProyecto1 String?  @db.VarChar(50)
-  jefeProyecto2 String?  @db.VarChar(50)
-
-  licenciaTipo LicenciaTipo?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  unidades        UnidadComercial[]
-  usuariosCliente UsuarioCliente[]
-  tareas          Tarea[]
-  softwares       ClienteSoftware[]
-  contactos       ClienteContacto[]
-  conexiones      ClienteConexion[]
-  comentarios     ClienteComentario[]
-  centrosTrabajo  ClienteCentroTrabajo[]
-  releasesPlan    ClienteReleasePlan[]
-}
-
-model UnidadComercial {
-  id          String  @id @default(uuid()) @db.Uuid
-  codigo      String  @db.VarChar(50)
-  descripcion String? @db.Text
-  activo      Boolean @default(true)
-  scope       UnidadComercialScope @default(HOTEL)
-
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-
-  tareas Tarea[]
-  @@index([clienteId, scope])
-
-  @@unique([clienteId, codigo], name: "clienteId_codigo", map: "uq_unidadcomercial_cliente_codigo")
-}
-
-model UsuarioCliente {
-  id        String  @id @default(uuid()) @db.Uuid
-  nombre    String  @db.Text
-  usuario   String  @unique @db.Text
-  password  String  @db.Text
-  email     String? @db.Text
-  telefono  String? @db.Text
-  tipo      String? @db.VarChar(50)
-
-  activo    Boolean @default(true)
-
-  clienteId String  @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-
-  recibeNotificaciones Boolean @default(true)
-  recibeTodasLasTareas Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  eventos       TareaEvento[] @relation("EventoCreadoPorCliente")
-  modulos       UsuarioClienteModulo[]
-  tareasCreadas Tarea[] @relation("TareaCreadaPorCliente")
-}
-
-model TipoTarea {
-  id          String @id @default(uuid()) @db.Uuid
-  codigo      String @unique @db.VarChar(50)
-  descripcion String? @db.Text
-  tareas      Tarea[]
-}
-
-model EstadoTarea {
-  id          String @id @default(uuid()) @db.Uuid
-  codigo      String @unique @db.VarChar(50)
-  descripcion String? @db.Text
-  tareas      Tarea[]
-}
-
-model PrioridadTarea {
-  id          String @id @default(uuid()) @db.Uuid
-  codigo      String @unique @db.VarChar(50)
-  descripcion String? @db.Text
-  tareas      Tarea[]
-}
-
-model EstadoPeticion {
-  id          String @id @default(uuid()) @db.Uuid
-  codigo      String @unique @db.VarChar(50)
-  descripcion String? @db.Text
-  tareas      Tarea[]
-}
-
-model Modulo {
-  id          String @id @default(uuid()) @db.Uuid
-  codigo      String @unique @db.VarChar(80)
-  descripcion String? @db.Text
-  tareas      Tarea[]
-  usuarios    UsuarioClienteModulo[]
-}
-
-model Release {
-  id          String @id @default(uuid()) @db.Uuid
-  codigo      String @unique @db.VarChar(50)
-  descripcion String? @db.Text
-  hotfixes    Hotfix[]
-  tareas      Tarea[]
-}
-
-model Hotfix {
-  id          String @id @default(uuid()) @db.Uuid
-  codigo      String @db.VarChar(50)
-  descripcion String? @db.Text
-
-  releaseId String @db.Uuid
-  release   Release @relation(fields: [releaseId], references: [id], onDelete: Restrict)
-
-  tareas Tarea[]
-  @@unique([releaseId, codigo])
-}
-
-model Tarea {
-  id     String @id @default(uuid()) @db.Uuid
-  titulo String @db.Text
-
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-
-  unidadComercialId String @db.Uuid
-  unidadComercial   UnidadComercial @relation(fields: [unidadComercialId], references: [id], onDelete: Restrict)
-
-  tipoId String @db.Uuid
-  tipo   TipoTarea @relation(fields: [tipoId], references: [id], onDelete: Restrict)
-
-  estadoId String? @db.Uuid
-  estado   EstadoTarea? @relation(fields: [estadoId], references: [id], onDelete: Restrict)
-
-  prioridadId String @db.Uuid
-  prioridad   PrioridadTarea @relation(fields: [prioridadId], references: [id], onDelete: Restrict)
-
-  moduloId String? @db.Uuid
-  modulo   Modulo? @relation(fields: [moduloId], references: [id], onDelete: Restrict)
-
-  releaseId String? @db.Uuid
-  release   Release? @relation(fields: [releaseId], references: [id], onDelete: Restrict)
-
-  hotfixId String? @db.Uuid
-  hotfix   Hotfix? @relation(fields: [hotfixId], references: [id], onDelete: Restrict)
-
-  reproducido Boolean @default(false)
-
-  creadoPorAgenteId String? @db.Uuid
-  creadoPorAgente   Agente? @relation("TareaCreadaPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
-
-  creadoPorClienteId String? @db.Uuid
-  creadoPorCliente   UsuarioCliente? @relation("TareaCreadaPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
-
-  asignadoAId String? @db.Uuid
-  asignadoA   Agente? @relation("TareaAsignadaAAgente", fields: [asignadoAId], references: [id], onDelete: Restrict)
-
-  revisadoPorId String? @db.Uuid
-  revisadoPor   Agente? @relation("TareaRevisadaPorAgente", fields: [revisadoPorId], references: [id], onDelete: Restrict)
-
-  estadoPeticionId String? @db.Uuid
-  estadoPeticion   EstadoPeticion? @relation(fields: [estadoPeticionId], references: [id], onDelete: Restrict)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  closedAt  DateTime?
-
-  eventos TareaEvento[]
-
-  @@index([clienteId, createdAt])
-  @@index([tipoId, estadoId])
-  @@index([prioridadId])
-  @@index([moduloId])
-}
-
-model TareaEvento {
-  id     String @id @default(uuid()) @db.Uuid
-  tareaId String @db.Uuid
-  tarea   Tarea  @relation(fields: [tareaId], references: [id], onDelete: Cascade)
-
-  tipo   EventoTipo
-  canal  String? @db.VarChar(50)
-  asunto String? @db.Text
-  cuerpo String? @db.Text
-  payload Json?
-
-  actorTipo ActorTipo
-
-  creadoPorAgenteId  String? @db.Uuid
-  creadoPorAgente    Agente? @relation("EventoCreadoPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
-
-  creadoPorClienteId String? @db.Uuid
-  creadoPorCliente   UsuarioCliente? @relation("EventoCreadoPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
-
-  visibleEnTimeline  Boolean @default(true)
-  visibleParaCliente Boolean @default(false)
-
-  createdAt DateTime @default(now())
-
-  @@index([tareaId, createdAt])
-  @@index([visibleEnTimeline])
-  @@index([visibleParaCliente])
-}
-
-model UsuarioClienteModulo {
-  id               String @id @default(uuid()) @db.Uuid
-  usuarioClienteId String @db.Uuid
-  usuarioCliente   UsuarioCliente @relation(fields: [usuarioClienteId], references: [id], onDelete: Cascade)
-
-  moduloId String @db.Uuid
-  modulo   Modulo @relation(fields: [moduloId], references: [id], onDelete: Cascade)
-
-  @@unique([usuarioClienteId, moduloId])
-}
-
-
 enum PermisoCodigo {
   CONFIG_MAESTROS
   CONFIG_AGENTES
   CONFIG_CLIENTES
+  CONFIG_CLIENTES_READ
   CONFIG_UNIDADES
   CONFIG_MODULOS
+  CONFIG_RELEASES
   CONFIG_RBAC
+  CONFIG_NOTIFICACIONES
 }
-
-model RoleEntity {
-  id          String   @id @default(uuid()) @db.Uuid
-  codigo      String   @unique
-  nombre      String
-  descripcion String?
-  createdAt   DateTime @default(now())
-
-  agentes     AgenteRoleAssignment[]
-  permisos    RolePermission[]
-}
-
-model Permission {
-  id          String        @id @default(uuid()) @db.Uuid
-  codigo      PermisoCodigo @unique
-  descripcion String?
-  createdAt   DateTime      @default(now())
-
-  roles       RolePermission[]
-}
-
-model RolePermission {
-  roleId       String @db.Uuid
-  permissionId String @db.Uuid
-
-  role       RoleEntity @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-}
-
-model AgenteRoleAssignment {
-  agenteId String @db.Uuid
-  roleId   String @db.Uuid
-
-  agente Agente     @relation(fields: [agenteId], references: [id], onDelete: Cascade)
-  role   RoleEntity @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@id([agenteId, roleId])
-}
-
 
 enum ClienteSoftwareTipo {
+  PMS
+  ERP
+  PERIFERIA
+  OTROS
   GP
   PM
   PLATAFORMA
   OTRO
-}
-
-model ClienteSoftware {
-  id        String @id @default(uuid()) @db.Uuid
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  tipo    ClienteSoftwareTipo
-  nombre  String @db.VarChar(200)
-  version String? @db.VarChar(100)
-  modulo  String? @db.VarChar(150)
-  notas   String? @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([clienteId])
-}
-
-model ClienteContacto {
-  id        String @id @default(uuid()) @db.Uuid
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  nombre     String  @db.VarChar(200)
-  cargo      String? @db.VarChar(150)
-  email      String? @db.VarChar(200)
-  movil      String? @db.VarChar(50)
-  principal  Boolean @default(false)
-  notas      String? @db.Text
-
-  activo     Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([clienteId])
-}
-
-model ClienteConexion {
-  id        String @id @default(uuid()) @db.Uuid
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  nombre    String  @db.VarChar(200)
-  endpoint  String? @db.VarChar(500)
-  usuario   String? @db.VarChar(150)
-  secretRef String? @db.VarChar(500)
-  notas     String? @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([clienteId])
-}
-
-model ClienteComentario {
-  id        String @id @default(uuid()) @db.Uuid
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  agenteId String @db.Uuid
-  agente   Agente @relation(fields: [agenteId], references: [id], onDelete: Restrict)
-
-  texto String @db.Text
-
-  createdAt DateTime @default(now())
-
-  @@index([clienteId])
-}
-
-model ClienteCentroTrabajo {
-  id        String @id @default(uuid()) @db.Uuid
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  nombre       String  @db.VarChar(250)
-  direccion    String? @db.VarChar(500)
-  ciudad       String? @db.VarChar(150)
-  provincia    String? @db.VarChar(150)
-  codigoPostal String? @db.VarChar(20)
-  pais         String? @db.VarChar(100)
-  notas        String? @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([clienteId])
-}
-
-enum ClienteReleaseTipo {
-  RELEASE
-  HOTFIX
 }
 
 enum ClienteReleaseEstado {
@@ -438,24 +458,9 @@ enum ClienteReleaseEstado {
   CANCELADO
 }
 
-model ClienteReleasePlan {
-  id        String @id @default(uuid()) @db.Uuid
-  clienteId String @db.Uuid
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  tipo           ClienteReleaseTipo
-  titulo         String @db.VarChar(200)
-  fechaPrevista  DateTime?
-  fechaInstalada DateTime?
-  estado         ClienteReleaseEstado @default(PLANIFICADO)
-
-  agenteId String? @db.Uuid
-  agente   Agente? @relation(fields: [agenteId], references: [id], onDelete: SetNull)
-
-  detalle String? @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([clienteId])
+enum TipoSeguridad {
+  NINGUNO
+  TLS
+  SSL
+  AZURE
 }
