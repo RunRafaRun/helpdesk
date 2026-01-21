@@ -205,7 +205,7 @@ export default function ClienteEdit() {
       const payload = {
         codigo: unidadForm.codigo.trim(),
         scope: unidadForm.scope,
-        descripcion: unidadForm.descripcion.trim() ? unidadForm.descripcion.trim() : null,
+        descripcion: unidadForm.descripcion.trim() || undefined,
         activo: !!unidadForm.activo,
       };
       if (editingUnidadId) {
@@ -249,7 +249,15 @@ function openNewContacto() {
 
   async function onToggleActivoContacto(c: any) {
     try {
-      await updateContacto(id!, c.id, { activo: !c.activo });
+      await updateContacto(id!, c.id, {
+        nombre: c.nombre,
+        cargo: c.cargo,
+        email: c.email,
+        movil: c.movil,
+        principal: c.principal,
+        notas: c.notas,
+        activo: !c.activo,
+      });
       await loadContactos();
     } catch (e: any) {
       setContactosError(e?.message ?? "Error actualizando contacto");
@@ -303,18 +311,6 @@ async function onSaveContacto() {
 
   React.useEffect(() => { loadCliente(); }, [id]);
 
-  async function loadUnidades() {
-    if (!id) return;
-    if (unidades) return;
-    setError(null);
-    try {
-      const data = await listUnidades(id);
-      setUnidades(data);
-    } catch (e: any) {
-      setError(e?.message ?? "Error");
-    }
-  }
-
   async function loadUsuarios() {
     if (!id) return;
     setUsuariosError(null);
@@ -342,7 +338,17 @@ async function onSaveContacto() {
   function openNewUsuario() {
     setEditingUsuarioId(null);
     setUsuarioSaveError(null);
-    const fresh = { usuario: "", nombre: "", email: "", telefono: "", tipo: "USUARIO", activo: true };
+    const fresh = {
+      nombre: "",
+      usuario: "",
+      password: "",
+      email: "",
+      telefono: "",
+      tipo: "USUARIO",
+      recibeNotificaciones: true,
+      recibeTodasLasTareas: true,
+      activo: true
+    };
     setUsuarioForm(fresh);
     setUsuarioInitial(fresh);
 
@@ -352,11 +358,14 @@ async function onSaveContacto() {
   function openEditUsuario(u: any) {
     setUsuarioSaveError(null);
     const form = {
-      usuario: u?.usuario ?? "",
       nombre: u?.nombre ?? "",
+      usuario: u?.usuario ?? "",
+      password: "",
       email: u?.email ?? "",
       telefono: u?.telefono ?? "",
       tipo: u?.tipo ?? "USUARIO",
+      recibeNotificaciones: u?.recibeNotificaciones ?? true,
+      recibeTodasLasTareas: u?.recibeTodasLasTareas ?? true,
       activo: (u?.activo ?? true) === true,
     };
     setEditingUsuarioId(u?.id ?? null);

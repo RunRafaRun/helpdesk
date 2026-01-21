@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, MaxLength, IsNotEmpty, IsEnum, IsUUID, IsDateString } from 'class-validator';
-import { ClienteReleaseTipo, ClienteReleaseEstado } from '@prisma/client';
+import { IsString, IsOptional, MaxLength, IsNotEmpty, IsEnum, IsUUID, IsDateString, IsBoolean } from 'class-validator';
+import { ClienteReleaseEstado, UnidadComercialScope } from '@prisma/client';
 
 // CLIENTE CONEXION DTOs
 export class CreateClienteConexionDto {
@@ -42,6 +42,11 @@ export class CreateClienteComentarioDto {
   @IsString()
   @IsNotEmpty()
   texto: string;
+
+  @ApiProperty({ required: false, default: false })
+  @IsBoolean()
+  @IsOptional()
+  destacado?: boolean;
 }
 
 export class UpdateClienteComentarioDto extends PartialType(CreateClienteComentarioDto) {}
@@ -54,55 +59,26 @@ export class CreateClienteCentroTrabajoDto {
   @MaxLength(250)
   nombre: string;
 
-  @ApiProperty({ required: false, maxLength: 500 })
+  @ApiProperty({ required: false, maxLength: 250, description: 'Base de datos asociada' })
   @IsString()
   @IsOptional()
-  @MaxLength(500)
-  direccion?: string;
-
-  @ApiProperty({ required: false, maxLength: 150 })
-  @IsString()
-  @IsOptional()
-  @MaxLength(150)
-  ciudad?: string;
-
-  @ApiProperty({ required: false, maxLength: 150 })
-  @IsString()
-  @IsOptional()
-  @MaxLength(150)
-  provincia?: string;
-
-  @ApiProperty({ required: false, maxLength: 20 })
-  @IsString()
-  @IsOptional()
-  @MaxLength(20)
-  codigoPostal?: string;
-
-  @ApiProperty({ required: false, maxLength: 100 })
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  pais?: string;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  notas?: string;
+  @MaxLength(250)
+  baseDatos?: string;
 }
 
 export class UpdateClienteCentroTrabajoDto extends PartialType(CreateClienteCentroTrabajoDto) {}
 
 // CLIENTE RELEASE PLAN DTOs
 export class CreateClienteReleasePlanDto {
-  @ApiProperty({ enum: ClienteReleaseTipo })
-  @IsEnum(ClienteReleaseTipo)
-  tipo: ClienteReleaseTipo;
-
-  @ApiProperty({ maxLength: 200 })
-  @IsString()
+  @ApiProperty({ description: 'ID del Release' })
+  @IsUUID()
   @IsNotEmpty()
-  @MaxLength(200)
-  titulo: string;
+  releaseId: string;
+
+  @ApiProperty({ required: false, description: 'ID del Hotfix (opcional)' })
+  @IsUUID()
+  @IsOptional()
+  hotfixId?: string;
 
   @ApiProperty({ required: false })
   @IsDateString()
@@ -132,6 +108,33 @@ export class CreateClienteReleasePlanDto {
 
 export class UpdateClienteReleasePlanDto extends PartialType(CreateClienteReleasePlanDto) {}
 
+// UNIDAD COMERCIAL DTOs
+export class CreateUnidadComercialDto {
+  @ApiProperty({ maxLength: 50 })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  codigo: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  descripcion?: string;
+
+  @ApiProperty({ enum: UnidadComercialScope, default: 'HOTEL' })
+  @IsEnum(UnidadComercialScope)
+  @IsOptional()
+  scope?: UnidadComercialScope;
+
+  @ApiProperty({ default: true })
+  @IsBoolean()
+  @IsOptional()
+  activo?: boolean;
+}
+
+export class UpdateUnidadComercialDto extends PartialType(CreateUnidadComercialDto) {}
+
 // Re-exportar los DTOs principales
 export { CreateClienteSoftwareDto, UpdateClienteSoftwareDto } from './cliente-software.dto';
 export { CreateClienteContactoDto, UpdateClienteContactoDto } from './cliente-contacto.dto';
+export { CreateClienteUsuarioDto, UpdateClienteUsuarioDto, SetClienteUsuarioModulosDto } from './cliente-usuario.dto';

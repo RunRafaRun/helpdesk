@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
@@ -15,6 +15,7 @@ export default function Shell() {
   });
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const navRef = useRef<HTMLElement>(null);
 
   const toggleSection = (sectionName: string) => {
     setExpandedSections(prev => {
@@ -22,6 +23,8 @@ export default function Shell() {
       if (newSet.has(sectionName)) {
         newSet.delete(sectionName);
       } else {
+        // Close other menus when opening a new one
+        newSet.clear();
         newSet.add(sectionName);
       }
       return newSet;
@@ -31,6 +34,20 @@ export default function Shell() {
   const closeAllMenus = () => {
     setExpandedSections(new Set());
   };
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        closeAllMenus();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -48,26 +65,12 @@ export default function Shell() {
           </div>
         </div>
 
-        <nav className="nav">
-          <NavLink to="/" end>Panel principal</NavLink>
+        <nav className="nav" ref={navRef}>
+          <NavLink to="/" end>Dashboard</NavLink>
+          <NavLink to="/tareas">Tareas</NavLink>
 
           {hasPerm("CONFIG_NOTIFICACIONES") && (
-            <div className="nav-section">
-              <button
-                className="nav-section-header"
-                onClick={() => toggleSection("comunicaciones")}
-              >
-                <span>Comunicaciones</span>
-                <span className={`nav-chevron ${expandedSections.has("comunicaciones") ? "expanded" : ""}`}>
-                  ▼
-                </span>
-              </button>
-              {expandedSections.has("comunicaciones") && (
-                <div className="nav-submenu">
-                  <NavLink to="/notificaciones" onClick={closeAllMenus}>Notificaciones Masivas</NavLink>
-                </div>
-              )}
-            </div>
+            <NavLink to="/notificaciones">Notificaciones Masivas</NavLink>
           )}
 
           {canConfig && (
@@ -83,12 +86,16 @@ export default function Shell() {
               </button>
               {expandedSections.has("configuracion") && (
                 <div className="nav-submenu">
+                  {hasPerm("CONFIG_GENERAL") && <NavLink to="/config/general" onClick={closeAllMenus}>General</NavLink>}
                   {hasPerm("CONFIG_AGENTES") && <NavLink to="/config/agentes" onClick={closeAllMenus}>Agentes</NavLink>}
                   {(hasPerm("CONFIG_CLIENTES") || hasPerm("CONFIG_CLIENTES_READ")) && <NavLink to="/config/clientes" onClick={closeAllMenus}>Clientes</NavLink>}
                   {hasPerm("CONFIG_MODULOS") && <NavLink to="/config/modulos" onClick={closeAllMenus}>Módulos</NavLink>}
                   {hasPerm("CONFIG_RELEASES") && <NavLink to="/config/releases" onClick={closeAllMenus}>Releases</NavLink>}
                   {hasPerm("CONFIG_RBAC") && <NavLink to="/config/roles" onClick={closeAllMenus}>Roles y permisos</NavLink>}
-                  {hasPerm("CONFIG_NOTIFICACIONES") && <NavLink to="/config/configuracion" onClick={closeAllMenus}>Configuración General</NavLink>}
+                  {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/tipos-tarea" onClick={closeAllMenus}>Tipos Tarea</NavLink>}
+                  {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/estados-tarea" onClick={closeAllMenus}>Estados Tarea</NavLink>}
+                  {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/prioridades-tarea" onClick={closeAllMenus}>Prioridades Tarea</NavLink>}
+                  {hasPerm("CONFIG_NOTIFICACIONES") && <NavLink to="/config/notificaciones" onClick={closeAllMenus}>Configuración Notificaciones</NavLink>}
                 </div>
               )}
             </div>

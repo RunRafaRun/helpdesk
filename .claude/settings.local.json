@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker logs:*)",
+      "Bash(cd:*)",
+      "Bash(npm install:*)",
+      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\rfernandez\\\\helpdesk\\\\apps\\\\api''; npm install exceljs --save-dev\")",
+      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\rfernandez\\\\helpdesk''; node scripts/generate-import-template.js\")",
+      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\rfernandez\\\\helpdesk\\\\apps\\\\api''; node ../../scripts/generate-import-template.js\")",
+      "Bash(powershell -Command \"Get-Item ''C:\\\\Users\\\\rfernandez\\\\helpdesk\\\\plantilla_importacion_clientes.xlsx'' | Select-Object Name, Length, LastWriteTime\")",
+      "Bash(powershell -Command \"docker exec -it helpdesk-api npx ts-node prisma/seed-modulos.ts\")",
+      "Bash(powershell -Command \"docker exec helpdesk-api npx ts-node prisma/seed-modulos.ts\")",
+      "Bash(powershell -Command \"docker exec helpdesk-api npx prisma migrate dev --name change_software_tipo_enum\")",
+      "Bash(powershell -Command \"docker exec helpdesk-db psql -U helpdesk -d helpdesk -c ''SELECT tipo, COUNT\\(*\\) FROM \"\"ClienteSoftware\"\" GROUP BY tipo;''\")",
+      "Bash(powershell -Command \"docker exec helpdesk-db psql -U postgres -d helpdesk -c ''SELECT tipo, COUNT\\(*\\) FROM \"\"ClienteSoftware\"\" GROUP BY tipo;''\")",
+      "Bash(powershell -Command \"docker exec helpdesk-db env | Select-String -Pattern ''POSTGRES''\")",
+      "Bash(powershell -Command \"docker exec helpdesk-db psql -U app -d helpdesk -c ''SELECT tipo, COUNT\\(*\\) FROM \"\"ClienteSoftware\"\" GROUP BY tipo;''\")",
+      "Bash(powershell:*)",
+      "Bash(docker exec:*)",
+      "Bash(curl:*)",
+      "Bash(ping:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(docker restart:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YzE0ODU0ZC03NTllLTQxODAtYThkNi1iNjQyNjFmZTgyYjEiLCJ1c3VhcmlvIjoiYWRtaW4iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3Njg5MzM4NzYsImV4cCI6MTc2ODk3NzA3Nn0.Jx8htf2fnywjuJwsE94X3l1sYG6Y6H85W8Ig_Bd6K-A\":*)",
+      "Bash(__NEW_LINE_ef222208288797b0__ echo \"=== Test GET Tipos Tarea ===\")",
+      "Bash(__NEW_LINE_ef222208288797b0__ echo \"=== Test POST - Create new Tipo ===\")",
+      "Bash(__NEW_LINE_ef222208288797b0__ echo \"=== Test GET Tipos \\(should include new one\\) ===\")",
+      "Bash(npx:*)",
+      "Bash(docker ps:*)",
+      "Bash(ls:*)",
+      "Bash(dir /b C:Usersrfernandezhelpdesk_opencode*.md C:Usersrfernandezhelpdesk_opencode*.MD)",
+      "Bash(dir C:Usersrfernandezhelpdesk_opencode*.md)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
+}

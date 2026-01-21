@@ -1,0 +1,8 @@
+{
+  "titulo": "Test task for UI verification",
+  "clienteCodigo": "MARRIOTT",
+  "unidadComercialCodigo": "MARRIOTT-CENTRAL",
+  "mensajeInicial": "This is a test task created to verify the TareaFicha page displays correctly with all required fields.",
+  "tipoCodigo": "Error",
+  "prioridadCodigo": "ALTA"
+}

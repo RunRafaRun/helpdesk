@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, IsInt, Min, Max, IsUUID } from "class-validator";
+import { Type } from "class-transformer";
 
 export class CrearTareaDto {
   @ApiProperty()
@@ -37,6 +38,21 @@ export class CrearTareaDto {
   @IsString()
   prioridadCodigo?: string;
 
+  @ApiPropertyOptional({ description: "Estado. Por defecto usa el estado marcado como porDefecto" })
+  @IsOptional()
+  @IsString()
+  estadoCodigo?: string;
+
+  @ApiPropertyOptional({ description: "ID del Release (UUID)" })
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
+  @ApiPropertyOptional({ description: "ID del Hotfix (UUID)" })
+  @IsOptional()
+  @IsUUID()
+  hotfixId?: string;
+
   @ApiPropertyOptional({ description: "Canal (WEB/EMAIL/OTRS/API...)" })
   @IsOptional()
   @IsString()
@@ -63,4 +79,106 @@ export class CrearComentarioDto {
   @IsOptional()
   @IsBoolean()
   visibleParaCliente?: boolean;
+}
+
+export class ListarTareasDto {
+  @ApiPropertyOptional({ description: "Filtrar por ID de cliente" })
+  @IsOptional()
+  @IsString()
+  clienteId?: string;
+
+  @ApiPropertyOptional({ description: "Filtrar por ID de estado" })
+  @IsOptional()
+  @IsString()
+  estadoId?: string;
+
+  @ApiPropertyOptional({ description: "Filtrar por ID de prioridad" })
+  @IsOptional()
+  @IsString()
+  prioridadId?: string;
+
+  @ApiPropertyOptional({ description: "Filtrar por ID de tipo" })
+  @IsOptional()
+  @IsString()
+  tipoId?: string;
+
+  @ApiPropertyOptional({ description: "Filtrar por ID de agente asignado" })
+  @IsOptional()
+  @IsString()
+  asignadoAId?: string;
+
+  @ApiPropertyOptional({ description: "Filtrar por ID de módulo" })
+  @IsOptional()
+  @IsString()
+  moduloId?: string;
+
+  @ApiPropertyOptional({ description: "Buscar por título" })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: "Número de página (desde 1)", default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: "Cantidad de resultados por página", default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+}
+
+export class ActualizarTareaDto {
+  @ApiPropertyOptional({ description: "Nuevo título" })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  titulo?: string;
+
+  @ApiPropertyOptional({ description: "ID del nuevo estado" })
+  @IsOptional()
+  @IsString()
+  estadoId?: string;
+
+  @ApiPropertyOptional({ description: "ID de la nueva prioridad" })
+  @IsOptional()
+  @IsString()
+  prioridadId?: string;
+
+  @ApiPropertyOptional({ description: "ID del nuevo tipo" })
+  @IsOptional()
+  @IsString()
+  tipoId?: string;
+
+  @ApiPropertyOptional({ description: "ID del nuevo módulo" })
+  @IsOptional()
+  @IsString()
+  moduloId?: string;
+
+  @ApiPropertyOptional({ description: "ID del release" })
+  @IsOptional()
+  @IsString()
+  releaseId?: string;
+
+  @ApiPropertyOptional({ description: "ID del hotfix" })
+  @IsOptional()
+  @IsString()
+  hotfixId?: string;
+
+  @ApiPropertyOptional({ description: "Indica si se ha reproducido el problema" })
+  @IsOptional()
+  @IsBoolean()
+  reproducido?: boolean;
+}
+
+export class AsignarTareaDto {
+  @ApiProperty({ description: "ID del agente a asignar" })
+  @IsString()
+  @IsNotEmpty()
+  agenteId!: string;
 }

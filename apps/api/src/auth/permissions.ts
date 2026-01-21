@@ -4,18 +4,32 @@ import { PrismaService } from "../prisma.service";
 import { PermisoCodigo } from "@prisma/client";
 
 export const PERMISSIONS_KEY = "required_permissions";
+export const PERMISSIONS_ANY_KEY = "required_permissions_any";
+
+// Requires ALL of the specified permissions
 export const RequirePermissions = (...perms: PermisoCodigo[]) => SetMetadata(PERMISSIONS_KEY, perms);
+
+// Requires ANY ONE of the specified permissions (OR logic)
+export const RequireAnyPermission = (...perms: PermisoCodigo[]) => SetMetadata(PERMISSIONS_ANY_KEY, perms);
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(private readonly reflector: Reflector, private readonly prisma: PrismaService) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<PermisoCodigo[]>(PERMISSIONS_KEY, [
+    const requiredAll = this.reflector.getAllAndOverride<PermisoCodigo[]>(PERMISSIONS_KEY, [
       ctx.getHandler(),
       ctx.getClass(),
     ]);
-    if (!required || required.length === 0) return true;
+    const requiredAny = this.reflector.getAllAndOverride<PermisoCodigo[]>(PERMISSIONS_ANY_KEY, [
+      ctx.getHandler(),
+      ctx.getClass(),
+    ]);
+
+    // If no permissions required, allow
+    if ((!requiredAll || requiredAll.length === 0) && (!requiredAny || requiredAny.length === 0)) {
+      return true;
+    }
 
     const req = ctx.switchToHttp().getRequest<any>();
     const user = req.user;
@@ -34,6 +48,23 @@ export class PermissionsGuard implements CanActivate {
       }
     }
 
-    return required.every((p) => permisos.has(p));
+    // Attach permissions to request for use in controllers
+    req.userPermissions = permisos;
+
+    // Check requiredAll (AND logic)
+    if (requiredAll && requiredAll.length > 0) {
+      if (!requiredAll.every((p) => permisos.has(p))) {
+        return false;
+      }
+    }
+
+    // Check requiredAny (OR logic)
+    if (requiredAny && requiredAny.length > 0) {
+      if (!requiredAny.some((p) => permisos.has(p))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

@@ -1,6 +1,10 @@
 import { PrismaClient, PermisoCodigo } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 
+// Import additional seed functions
+import { main as seedDummyClientes } from "./seed-dummy-clientes";
+import { main as seedModulos } from "./seed-modulos";
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -82,18 +86,13 @@ async function main() {
     create: { clienteId: cliente.id, codigo: "TODOS", descripcion: "Todos", scope: "TODOS" },
   });
 
-  // Módulos: precargar algunos si está vacío (mínimo)
-  const modCount = await prisma.modulo.count();
-  if (modCount === 0) {
-    await prisma.modulo.createMany({
-      data: [
-        { codigo: "AVA-GENERAL", descripcion: "Avalon Escritorio - General" },
-        { codigo: "AVC-GENERAL", descripcion: "Avalon Cloud - General" },
-      ],
-    });
-  }
+  // Seed modules
+  await seedModulos(prisma);
 
-  console.log("[seed] OK: RBAC + admin + cliente DEMO + unidades + módulos básicos");
+  // Seed dummy clients
+  await seedDummyClientes(prisma);
+
+  console.log("[seed] OK: RBAC + admin + cliente DEMO + unidades + módulos + dummy clients");
 }
 
 main()

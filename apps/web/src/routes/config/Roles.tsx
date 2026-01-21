@@ -73,16 +73,19 @@ export default function Roles() {
 return (
   <div className="grid">
     <div className="topbar">
-      <div>
-        <div className="h1">Roles & permisos</div>
-        <div className="h2">RBAC: controla acceso a configuración</div>
-      </div>
-      <button className="btn" onClick={load} disabled={loading}>Refrescar</button>
+      <div className="h1">Roles y permisos</div>
+      <button className="btn icon" onClick={load} disabled={loading} title="Refrescar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+        </svg>
+      </button>
     </div>
 
     <details className="card cardDetails collapsible">
       <summary className="cardSummary">
-        <div className="h1">Crear rol</div></summary>
+        <div className="h1">Crear rol</div>
+      </summary>
       <div className="cardContent">
         <form className="form" onSubmit={onCreateRole}>
           <div className="field">
@@ -104,12 +107,13 @@ return (
       </div>
     </details>
 
-<details className="card cardDetails collapsible" open>
+    <details className="card cardDetails collapsible" open>
       <summary className="cardSummary">
         <div>
-          <div className="h1">Roles</div>
+          <div className="h1">Lista de roles</div>
           <div className="small" style={{ marginTop: 6 }}>{loading ? "Cargando..." : `${roles.length} rol(es)`}</div>
-        </div></summary>
+        </div>
+      </summary>
       <div className="cardContent">
         {error && <div className="small" style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div>}
         <div className="form">

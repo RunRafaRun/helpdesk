@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { ClienteSoftwareTipo } from '@prisma/client';
 
 export class CreateClienteSoftwareDto {
@@ -19,11 +19,10 @@ export class CreateClienteSoftwareDto {
   @MaxLength(100)
   version?: string;
 
-  @ApiProperty({ required: false, maxLength: 150 })
-  @IsString()
+  @ApiProperty({ required: false, description: 'ID del Módulo' })
+  @IsUUID()
   @IsOptional()
-  @MaxLength(150)
-  modulo?: string;
+  moduloId?: string;
 
   @ApiProperty({ required: false })
   @IsString()

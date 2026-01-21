@@ -28,7 +28,22 @@ export class AgentesAdminController {
   @RequirePermissions(PermisoCodigo.CONFIG_AGENTES)
   async list() {
     return this.prisma.agente.findMany({
-      select: { id: true, nombre: true, usuario: true, email: true, role: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        nombre: true,
+        usuario: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        roles: {
+          select: {
+            role: {
+              select: { id: true, codigo: true, nombre: true }
+            }
+          }
+        }
+      },
       orderBy: { usuario: "asc" },
     });
   }

@@ -6,9 +6,14 @@ import { CreateClienteSoftwareDto, UpdateClienteSoftwareDto } from '../dto/clien
 export class ClienteSoftwareService {
   constructor(private prisma: PrismaService) {}
 
+  private readonly includeRelations = {
+    modulo: { select: { id: true, codigo: true, descripcion: true } },
+  };
+
   async findAll(clienteId: string) {
     return this.prisma.clienteSoftware.findMany({
       where: { clienteId },
+      include: this.includeRelations,
       orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
     });
   }
@@ -16,6 +21,7 @@ export class ClienteSoftwareService {
   async findOne(clienteId: string, id: string) {
     const software = await this.prisma.clienteSoftware.findFirst({
       where: { id, clienteId },
+      include: this.includeRelations,
     });
 
     if (!software) {
@@ -29,8 +35,13 @@ export class ClienteSoftwareService {
     return this.prisma.clienteSoftware.create({
       data: {
         clienteId,
-        ...dto,
+        tipo: dto.tipo,
+        nombre: dto.nombre,
+        version: dto.version,
+        moduloId: dto.moduloId || null,
+        notas: dto.notas,
       },
+      include: this.includeRelations,
     });
   }
 
@@ -39,7 +50,14 @@ export class ClienteSoftwareService {
 
     return this.prisma.clienteSoftware.update({
       where: { id },
-      data: dto,
+      data: {
+        ...(dto.tipo !== undefined && { tipo: dto.tipo }),
+        ...(dto.nombre !== undefined && { nombre: dto.nombre }),
+        ...(dto.version !== undefined && { version: dto.version }),
+        ...(dto.moduloId !== undefined && { moduloId: dto.moduloId || null }),
+        ...(dto.notas !== undefined && { notas: dto.notas }),
+      },
+      include: this.includeRelations,
     });
   }
 

@@ -3,25 +3,44 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 import { PrismaService } from "../prisma.service";
 import { JwtAuthGuard } from "../auth/guards";
-import { PermissionsGuard } from "../auth/permissions";
-import { RequirePermissions } from "../auth/permissions";
+import { PermissionsGuard, RequirePermissions, RequireAnyPermission } from "../auth/permissions";
 import { PermisoCodigo, UnidadComercialScope } from "@prisma/client";
 import { CrearClienteDto, CrearUnidadDto } from "./dto";
+import { encrypt, decrypt } from "../utils/crypto";
 
 
 class UpdateClienteDto {
+  @IsOptional() @IsString()
   codigo?: string;
+
+  @IsOptional() @IsString()
   descripcion?: string | null;
+
+  @IsOptional() @IsString()
   logotipo?: string | null;
+
+  @IsOptional() @IsString()
   jefeProyecto1?: string | null;
+
+  @IsOptional() @IsString()
   jefeProyecto2?: string | null;
+
+  @IsOptional() @IsString()
+  licenciaTipo?: "AAM" | "PPU" | null;
 }
 
 
 class UpdateUnidadDto {
+  @IsOptional() @IsString()
   codigo?: string;
+
+  @IsOptional() @IsString()
   descripcion?: string | null;
+
+  @IsOptional() @IsString()
   scope?: UnidadComercialScope;
+
+  @IsOptional() @IsBoolean()
   activo?: boolean;
 }
 
@@ -167,7 +186,7 @@ class CreateConexionDto {
 class UpdateConexionDto extends CreateConexionDto {}
 
 class CreateSoftwareDto {
-  tipo!: "GP"|"PM"|"PLATAFORMA"|"OTRO";
+  tipo!: "PMS"|"ERP"|"PERIFERIA"|"OTROS";
   nombre!: string;
   version?: string | null;
   moduloId?: string | null;
@@ -178,18 +197,28 @@ class UpdateSoftwareDto extends CreateSoftwareDto {}
 
 class CreateCentroTrabajoDto {
   nombre!: string;
-  direccion?: string | null;
-  ciudad?: string | null;
-  provincia?: string | null;
-  codigoPostal?: string | null;
-  pais?: string | null;
-  notas?: string | null;
+  baseDatos?: string | null;
 }
 
 class UpdateCentroTrabajoDto extends CreateCentroTrabajoDto {}
 
 class CreateComentarioDto {
+  @IsString()
   texto!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  destacado?: boolean;
+}
+
+class UpdateComentarioDto {
+  @IsOptional()
+  @IsString()
+  texto?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  destacado?: boolean;
 }
 
 class CreateReleasePlanDto {
@@ -212,7 +241,7 @@ export class ClientesAdminController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async list() {
     const clientes = await this.prisma.cliente.findMany({
       select: {
@@ -233,11 +262,16 @@ export class ClientesAdminController {
             hotfix: { select: { codigo: true } },
           },
         },
+        comentarios: {
+          where: { destacado: true },
+          take: 1,
+          select: { id: true, texto: true },
+        },
       },
       orderBy: { codigo: "asc" },
     });
 
-    // Transform to include currentRelease field
+    // Transform to include currentRelease and comentarioDestacado fields
     return clientes.map((c) => ({
       id: c.id,
       codigo: c.codigo,
@@ -250,12 +284,13 @@ export class ClientesAdminController {
       currentRelease: c.releasesPlan[0]
         ? `${c.releasesPlan[0].release?.codigo || ''}${c.releasesPlan[0].hotfix ? `-${c.releasesPlan[0].hotfix.codigo}` : ''}`
         : null,
+      comentarioDestacado: c.comentarios[0]?.texto || null,
     }));
   }
 
   // GET /admin/clientes/by-codigo/:codigo
   @Get("by-codigo/:codigo")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async getOneByCodigo(@Param("codigo") codigo: string) {
     return this.prisma.cliente.findUnique({
       where: { codigo },
@@ -265,7 +300,7 @@ export class ClientesAdminController {
 
   // GET /admin/clientes/:id
   @Get(":id")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async getOne(@Param("id") id: string) {
     return this.prisma.cliente.findUnique({
       where: { id },
@@ -275,7 +310,7 @@ export class ClientesAdminController {
 
   // Usuarios cliente
   @Get(":id/usuarios")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listUsuarios(@Param("id") clienteId: string, @Query("includeInactive") includeInactive?: string) {
     const showInactive = includeInactive === "1" || includeInactive === "true";
     return this.prisma.clienteUsuario.findMany({
@@ -373,6 +408,7 @@ export class ClientesAdminController {
         logotipo: dto.logotipo ?? null,
         jefeProyecto1: dto.jefeProyecto1 ?? null,
         jefeProyecto2: dto.jefeProyecto2 ?? null,
+        licenciaTipo: dto.licenciaTipo ?? null,
       },
     });
   }
@@ -388,6 +424,7 @@ export class ClientesAdminController {
         logotipo: dto.logotipo,
         jefeProyecto1: dto.jefeProyecto1,
         jefeProyecto2: dto.jefeProyecto2,
+        licenciaTipo: dto.licenciaTipo,
       },
     });
   }
@@ -401,7 +438,7 @@ export class ClientesAdminController {
 
   // Unidades comerciales
   @Get(":id/unidades")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listUnidades(@Param("id") clienteId: string, @Query("includeInactive") includeInactive?: string) {
     const include = includeInactive === "1" || includeInactive === "true";
     return this.prisma.unidadComercial.findMany({
@@ -448,7 +485,7 @@ export class ClientesAdminController {
 
   // --- Software ---
   @Get(":id/software")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listSoftware(@Param("id") clienteId: string) {
     return this.prisma.clienteSoftware.findMany({ where: { clienteId }, orderBy: { nombre: "asc" } });
   }
@@ -479,7 +516,7 @@ export class ClientesAdminController {
 
   // --- Contactos ---
   @Get(":id/contactos")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listContactos(@Param("id") clienteId: string, @Query("includeInactive") includeInactive?: string) {
     const where: any = { clienteId };
     if (!includeInactive) where.activo = true;
@@ -517,26 +554,39 @@ export class ClientesAdminController {
 
   // --- Conexiones ---
   @Get(":id/conexiones")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listConexiones(@Param("id") clienteId: string) {
-    return this.prisma.clienteConexion.findMany({ where: { clienteId }, orderBy: { nombre: "asc" } });
+    const conexiones = await this.prisma.clienteConexion.findMany({ where: { clienteId }, orderBy: { nombre: "asc" } });
+    // Decrypt passwords for authenticated agents
+    return conexiones.map(c => ({
+      ...c,
+      secretRef: c.secretRef ? decrypt(c.secretRef) : null,
+    }));
   }
 
   @Post(":id/conexiones")
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
   async createConexion(@Param("id") clienteId: string, @Body() dto: CreateConexionDto) {
-    return this.prisma.clienteConexion.create({
-      data: { clienteId, nombre: dto.nombre, endpoint: dto.endpoint ?? null, usuario: dto.usuario ?? null, secretRef: dto.secretRef ?? null, notas: dto.notas ?? null },
+    // Encrypt password before storing
+    const encryptedPassword = dto.secretRef ? encrypt(dto.secretRef) : null;
+    const created = await this.prisma.clienteConexion.create({
+      data: { clienteId, nombre: dto.nombre, endpoint: dto.endpoint ?? null, usuario: dto.usuario ?? null, secretRef: encryptedPassword, notas: dto.notas ?? null },
     });
+    // Return with decrypted password
+    return { ...created, secretRef: dto.secretRef ?? null };
   }
 
   @Put(":id/conexiones/:conexionId")
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
   async updateConexion(@Param("id") clienteId: string, @Param("conexionId") conexionId: string, @Body() dto: UpdateConexionDto) {
-    return this.prisma.clienteConexion.update({
+    // Encrypt password before storing
+    const encryptedPassword = dto.secretRef ? encrypt(dto.secretRef) : null;
+    const updated = await this.prisma.clienteConexion.update({
       where: { id: conexionId },
-      data: { nombre: dto.nombre, endpoint: dto.endpoint ?? null, usuario: dto.usuario ?? null, secretRef: dto.secretRef ?? null, notas: dto.notas ?? null },
+      data: { nombre: dto.nombre, endpoint: dto.endpoint ?? null, usuario: dto.usuario ?? null, secretRef: encryptedPassword, notas: dto.notas ?? null },
     });
+    // Return with decrypted password
+    return { ...updated, secretRef: dto.secretRef ?? null };
   }
 
   @Delete(":id/conexiones/:conexionId")
@@ -548,11 +598,11 @@ export class ClientesAdminController {
 
   // --- Comentarios ---
   @Get(":id/comentarios")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listComentarios(@Param("id") clienteId: string) {
     return this.prisma.clienteComentario.findMany({
       where: { clienteId },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
       include: { agente: { select: { id: true, nombre: true, usuario: true } } },
     });
   }
@@ -562,15 +612,75 @@ export class ClientesAdminController {
   async createComentario(@Param("id") clienteId: string, @Body() dto: CreateComentarioDto, @Req() req: any) {
     const agenteId = req?.user?.sub as string | undefined;
     if (!agenteId) throw new BadRequestException("No autenticado");
+
+    // If creating as destacado, unmark any other destacado
+    if (dto.destacado) {
+      await this.prisma.clienteComentario.updateMany({
+        where: { clienteId, destacado: true },
+        data: { destacado: false },
+      });
+    }
+
     return this.prisma.clienteComentario.create({
-      data: { clienteId, agenteId, texto: dto.texto },
+      data: { clienteId, agenteId, texto: dto.texto, destacado: dto.destacado ?? false },
       include: { agente: { select: { id: true, nombre: true, usuario: true } } },
     });
   }
 
+  @Put(":id/comentarios/:comentarioId")
+  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  async updateComentario(@Param("id") clienteId: string, @Param("comentarioId") comentarioId: string, @Body() dto: UpdateComentarioDto) {
+    // If marking as destacado, unmark any other destacado for this cliente
+    if (dto.destacado === true) {
+      await this.prisma.clienteComentario.updateMany({
+        where: { clienteId, destacado: true, id: { not: comentarioId } },
+        data: { destacado: false },
+      });
+    }
+
+    return this.prisma.clienteComentario.update({
+      where: { id: comentarioId },
+      data: {
+        ...(dto.texto !== undefined && { texto: dto.texto }),
+        ...(dto.destacado !== undefined && { destacado: dto.destacado }),
+      },
+      include: { agente: { select: { id: true, nombre: true, usuario: true } } },
+    });
+  }
+
+  @Put(":id/comentarios/:comentarioId/destacar")
+  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  async toggleDestacado(@Param("id") clienteId: string, @Param("comentarioId") comentarioId: string) {
+    // Get current state
+    const comentario = await this.prisma.clienteComentario.findUnique({ where: { id: comentarioId } });
+    if (!comentario) throw new BadRequestException("Comentario no encontrado");
+
+    // If marking as destacado, unmark any other destacado for this cliente
+    if (!comentario.destacado) {
+      await this.prisma.clienteComentario.updateMany({
+        where: { clienteId, destacado: true },
+        data: { destacado: false },
+      });
+    }
+
+    // Toggle the destacado state
+    return this.prisma.clienteComentario.update({
+      where: { id: comentarioId },
+      data: { destacado: !comentario.destacado },
+      include: { agente: { select: { id: true, nombre: true, usuario: true } } },
+    });
+  }
+
+  @Delete(":id/comentarios/:comentarioId")
+  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  async deleteComentario(@Param("id") clienteId: string, @Param("comentarioId") comentarioId: string) {
+    await this.prisma.clienteComentario.delete({ where: { id: comentarioId } });
+    return { ok: true };
+  }
+
   // --- Centros de trabajo ---
   @Get(":id/centros-trabajo")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listCentros(@Param("id") clienteId: string) {
     return this.prisma.clienteCentroTrabajo.findMany({ where: { clienteId }, orderBy: { nombre: "asc" } });
   }
@@ -579,7 +689,7 @@ export class ClientesAdminController {
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
   async createCentro(@Param("id") clienteId: string, @Body() dto: CreateCentroTrabajoDto) {
     return this.prisma.clienteCentroTrabajo.create({
-      data: { clienteId, nombre: dto.nombre, direccion: dto.direccion ?? null, ciudad: dto.ciudad ?? null, provincia: dto.provincia ?? null, codigoPostal: dto.codigoPostal ?? null, pais: dto.pais ?? null, notas: dto.notas ?? null },
+      data: { clienteId, nombre: dto.nombre, baseDatos: dto.baseDatos ?? null },
     });
   }
 
@@ -588,7 +698,7 @@ export class ClientesAdminController {
   async updateCentro(@Param("id") clienteId: string, @Param("centroId") centroId: string, @Body() dto: UpdateCentroTrabajoDto) {
     return this.prisma.clienteCentroTrabajo.update({
       where: { id: centroId },
-      data: { nombre: dto.nombre, direccion: dto.direccion ?? null, ciudad: dto.ciudad ?? null, provincia: dto.provincia ?? null, codigoPostal: dto.codigoPostal ?? null, pais: dto.pais ?? null, notas: dto.notas ?? null },
+      data: { nombre: dto.nombre, baseDatos: dto.baseDatos ?? null },
     });
   }
 
@@ -601,7 +711,7 @@ export class ClientesAdminController {
 
   // --- Releases / Hotfix por cliente ---
   @Get(":id/releases")
-  @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
+  @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
   async listReleases(@Param("id") clienteId: string) {
     return this.prisma.clienteReleasePlan.findMany({
       where: { clienteId },

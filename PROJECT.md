@@ -1,23 +1,12 @@
-# PROJECT DEFINITION: Helpdesk Application
+# PROJECT.md - Helpdesk Application
 
-This file provides comprehensive guidance for all AIs working on this helpdesk project. It consolidates all project information to coordinate efforts and prevent loss of changes. Update this file whenever significant changes are made to the project structure, dependencies, or conventions.
+This is the main project documentation file. All AI assistants should use this file as the primary reference for this codebase.
 
 ## Project Overview
 
 Helpdesk application with JWT authentication, RBAC (Role-Based Access Control), and CRUD operations for managing clients, agents, tasks, and modules. Spanish language codebase.
 
-**Current Status**: Database schema synchronized, environment properly configured, development environment working.
-
-Includes:
-- Auth JWT (login admin)
-- Basic CRUD for masters (Clientes, Unidades Comerciales, Agentes, ClienteUsuarios)
-- Client profile management (software, contacts, users, connections, comments, work centers, releases)
-- Mass notifications with scheduling
-- Release/hotfix management
-- Email configuration (SMTP/Azure OAuth)
-- Seed creates an initial ADMIN agent (user: admin, password: admin123!)
-- Seed creates a DEMO client with units CENTRAL/TODOS
-- Seed creates 32 software modules and 10 dummy hotel clients
+**Current Status**: Database schema synchronized, environment properly configured, development environment working, task management fully implemented.
 
 ## Tech Stack
 
@@ -27,77 +16,7 @@ Includes:
 - **Language**: TypeScript for both backend and frontend
 - **Database**: PostgreSQL
 
-## Monorepo Structure
-
-- `apps/api/`: NestJS backend API
-- `apps/web/`: React frontend SPA
-- `infra/docker/`: Docker Compose configuration
-
-## Architecture
-
-### Backend Modules (apps/api/src/)
-- **AuthModule**: JWT authentication with Passport, login endpoint at `/auth/login`
-- **AdminModule**: Admin CRUD controllers:
-  - `agentes.admin.controller.ts` - Agent management
-  - `clientes.admin.controller.ts` - Client management with nested resources
-  - `modulos.admin.controller.ts` - Module management (renamed from Modulos)
-  - `releases.admin.controller.ts` - Release/hotfix management
-  - `rbac.admin.controller.ts` - Role and permission management
-  - `configuracion.admin.controller.ts` - Mail configuration
-  - `notificaciones.admin.controller.ts` - Mass notifications
-- **TareasModule**: Task management (Tareas) with events timeline
-- **ClienteFichaModule**: Client profile data with controllers for:
-  - Software, Contacts, Connections, Comments, Work Centers, Release Plans, Users, Units
-- **MailModule**: Email services with SMTP/Azure OAuth support and cron-based scheduled sending
-- **HealthModule**: Health check endpoint
-- **PrismaModule**: Database access layer (singleton PrismaService)
-
-### Frontend Routes (apps/web/src/routes/)
-- `/login`: Authentication
-- `/`: Dashboard (protected)
-- `/notificaciones`: Mass notifications (send, schedule, history)
-- `/config/agentes`: Agent management
-- `/config/clientes`: Client list
-- `/config/clientes/:id`: Client edit form
-- `/config/modulos`: Module management
-- `/config/releases`: Release and hotfix management
-- `/config/roles`: Role and permissions management
-- `/config/configuracion`: General configuration (mail settings)
-- `/clientes/:clienteId/ficha`: Client profile view with tabs
-
-### Key Data Models
-- **Agente**: Internal users (ADMIN or AGENTE role)
-- **Cliente**: Customer organizations with UnidadComercial units
-- **ClienteUsuario**: Customer portal users (mapped to `usuario_cliente` table)
-- **Tarea**: Support tickets with TareaEvento timeline
-- **RoleEntity/Permission**: RBAC system with PermisoCodigo enum
-- **ClienteSoftware**: Client software inventory (PMS, ERP, PERIFERIA, etc.)
-- **ClienteContacto**: Client contacts with principal flag
-- **ClienteConexion**: Client connection credentials (secretRef for passwords)
-- **ClienteComentario**: Internal comments about clients (with destacado flag)
-- **ClienteCentroTrabajo**: Client work centers/databases
-- **ClienteReleasePlan**: Planned releases/hotfixes per client
-- **Release/Hotfix**: Software versions (hotfixes belong to releases)
-- **NotificacionMasiva**: Mass email notifications with scheduling
-- **ConfiguracionMail**: Email server configuration (SMTP or Azure OAuth)
-
-## Authentication & Permissions
-- JWT tokens via `/auth/login`
-- Guards in `apps/api/src/auth/guards.ts`
-- Permissions defined in `apps/api/src/auth/permissions.ts`
-- Available permissions (PermisoCodigo enum):
-  - CONFIG_MAESTROS - General master data access
-  - CONFIG_AGENTES - Agent management
-  - CONFIG_CLIENTES - Full client management
-  - CONFIG_CLIENTES_READ - Read-only client access
-  - CONFIG_UNIDADES - Commercial unit management
-  - CONFIG_MODULOS - Module management
-  - CONFIG_RELEASES - Release/hotfix management
-  - CONFIG_RBAC - Role and permission management
-  - CONFIG_NOTIFICACIONES - Mass notifications and mail config
-- Default admin: `admin` / `admin123!`
-
-## Common Commands
+## Quick Start
 
 ### Start Development Environment
 ```powershell
@@ -110,19 +29,133 @@ docker compose -f infra/docker/compose.yml down -v
 docker compose -f infra/docker/compose.yml up --build
 ```
 
-### Database Operations
-For development (Docker environment):
-- Database schema is automatically synchronized via `prisma db push` during container startup
-- Use migrations only for schema changes that need version control
+### Development URLs
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| API | http://localhost:8080 |
+| Swagger | http://localhost:8080/docs |
+| PostgreSQL | localhost:5433 |
 
-Inside API container:
+### Default Credentials
+- **Admin**: admin / admin123!
+
+## Monorepo Structure
+
+```
+apps/
+  api/           # NestJS backend API
+  web/           # React frontend SPA
+infra/
+  docker/        # Docker Compose configuration
+```
+
+## Architecture
+
+### Backend Modules (apps/api/src/)
+
+- **AuthModule**: JWT authentication with Passport, login endpoint at `/auth/login`
+- **AdminModule**: Admin CRUD controllers:
+  - `agentes.admin.controller.ts` - Agent management
+  - `clientes.admin.controller.ts` - Client management with nested resources
+  - `modulos.admin.controller.ts` - Module management
+  - `releases.admin.controller.ts` - Release/hotfix management
+  - `rbac.admin.controller.ts` - Role and permission management
+  - `configuracion.admin.controller.ts` - Mail configuration
+  - `lookup.admin.controller.ts` - Lookup tables (tipos/estados/prioridades)
+- **TareasModule**: Full task management with:
+  - Auto-generated task number (yyyyNNNNN format, unique per year)
+  - Timeline events (comments, status changes, assignments)
+  - WYSIWYG editor (TipTap) for comments
+  - Task filtering by client, status, priority, assigned agent
+- **ClienteFichaModule**: Client profile data (software, contacts, users, connections, comments, work centers, release plans)
+- **MailModule**: Email services with SMTP/Azure OAuth support and scheduled sending
+- **HealthModule**: Health check endpoint
+- **PrismaModule**: Database access layer (singleton PrismaService)
+
+### Frontend Routes (apps/web/src/routes/)
+
+| Route | Description |
+|-------|-------------|
+| `/login` | Authentication |
+| `/` | Task list (main landing page, protected) |
+| `/tareas/nueva` | Create new task form |
+| `/tareas/:id` | Task detail view with timeline and comments |
+| `/notificaciones` | Mass notifications management |
+| `/config/agentes` | Agent management |
+| `/config/clientes` | Client list |
+| `/config/clientes/:id` | Client edit form |
+| `/config/modulos` | Module management |
+| `/config/releases` | Release and hotfix management |
+| `/config/roles` | Role and permissions management |
+| `/config/tipos-tarea` | Task types management |
+| `/config/estados-tarea` | Task states management |
+| `/config/prioridades-tarea` | Task priorities management |
+| `/config/notificaciones` | Email configuration |
+| `/clientes/:clienteCodigo/ficha` | Client profile view with tabs |
+
+### Key Data Models
+
+| Model | Description |
+|-------|-------------|
+| **Agente** | Internal users (ADMIN or AGENTE role) |
+| **Cliente** | Customer organizations with UnidadComercial units |
+| **ClienteUsuario** | Customer portal users (mapped to `usuario_cliente` table) |
+| **Tarea** | Support tickets with auto-generated numero, estado, tipo, prioridad |
+| **TareaEvento** | Timeline events (COMENTARIO, CAMBIO_ESTADO, ASIGNACION, etc.) |
+| **TipoTarea** | Task types with `orden` and `porDefecto` fields |
+| **EstadoTarea** | Task states with `orden` and `porDefecto` fields |
+| **PrioridadTarea** | Task priorities with `orden` and `porDefecto` fields |
+| **RoleEntity/Permission** | RBAC system with PermisoCodigo enum |
+| **ClienteSoftware** | Client software inventory (PMS, ERP, etc.) |
+| **ClienteContacto** | Client contacts with principal flag |
+| **ClienteConexion** | Client connection credentials |
+| **ClienteComentario** | Internal comments about clients |
+| **ClienteCentroTrabajo** | Client work centers/databases |
+| **ClienteReleasePlan** | Planned releases/hotfixes per client |
+| **Release/Hotfix** | Software versions (hotfixes belong to releases) |
+| **NotificacionMasiva** | Mass email notifications with scheduling |
+| **ConfiguracionMail** | Email server configuration (SMTP or Azure OAuth) |
+
+### Lookup Tables (TipoTarea, EstadoTarea, PrioridadTarea)
+
+These lookup tables have the following fields:
+- `codigo` (String, unique) - Code identifier
+- `descripcion` (String, optional) - Description
+- `orden` (Int, default 0) - Sort order for dropdowns
+- `porDefecto` (Boolean, default false) - Default value for new tasks (only one can be true)
+
+When creating new tasks, the system uses the item with `porDefecto=true` as the default value. If none is set, it uses the first item by `orden`.
+
+## Authentication & Permissions
+
+- JWT tokens via `/auth/login`
+- Guards in `apps/api/src/auth/guards.ts`
+- Permissions defined in `apps/api/src/auth/permissions.ts`
+
+### Available Permissions (PermisoCodigo enum)
+| Permission | Description |
+|------------|-------------|
+| CONFIG_MAESTROS | Task types, states, priorities management |
+| CONFIG_AGENTES | Agent management |
+| CONFIG_CLIENTES | Full client management |
+| CONFIG_CLIENTES_READ | Read-only client access |
+| CONFIG_UNIDADES | Commercial unit management |
+| CONFIG_MODULOS | Module management |
+| CONFIG_RELEASES | Release/hotfix management |
+| CONFIG_RBAC | Role and permission management |
+| CONFIG_NOTIFICACIONES | Mass notifications and mail config |
+
+## Common Commands
+
+### Database Operations (inside API container)
 ```bash
 docker exec -it helpdesk-api sh
 npx prisma migrate dev --name <migration_name>
 npx ts-node prisma/seed.ts
 ```
 
-### API Development
+### API Development (local)
 ```bash
 cd apps/api
 npm run start:dev          # Dev server with watch mode
@@ -131,38 +164,47 @@ npm run prisma:generate    # Generate Prisma client
 npm run prisma:migrate:dev # Run migrations
 ```
 
-### Web Development
+### Web Development (local)
 ```bash
 cd apps/web
 npm run dev     # Dev server on port 5173
 npm run build   # TypeScript check + Vite build
 ```
 
-## Development URLs
-- API: http://localhost:8080 (Docker)
-- Swagger: http://localhost:8080/docs (Docker)
-- Frontend: http://localhost:5173
-- Database: localhost:5433 (PostgreSQL in Docker)
+### Data Backup/Restore (for preserving dummy data)
+```bash
+# Before resetting database
+docker exec helpdesk-api sh -c "cd /app && npm run prisma:backup-dummy"
 
-## Auto-bootstrap (dev)
+# After running migrations and seed
+docker exec helpdesk-api sh -c "cd /app && npm run prisma:restore-dummy"
+```
+
+## Auto-bootstrap (Docker)
+
 When running `docker compose up`, the API container automatically executes:
-- `prisma generate`
-- `prisma db push`
-- `prisma/seed.ts` (idempotent)
+1. `prisma generate`
+2. `prisma db push`
+3. `prisma/seed.ts` (idempotent)
 
-This ensures tables and seed data exist (admin user, modules, demo client, dummy clients).
+This creates:
+- RBAC permissions and default roles
+- Admin user (admin/admin123!)
+- DEMO client with units CENTRAL/TODOS
+- 32 software modules (AV-*, AVCLOUD-*, APP-*)
+- 10 dummy hotel chain clients with full data
+- Default task types, states, and priorities
 
 ## Environment Setup
-For local development, create a `.env` file in `apps/api/` with:
+
+For local development (outside Docker), create `.env` in `apps/api/`:
 ```
 DATABASE_URL="postgresql://app:apppass@localhost:5433/helpdesk?schema=public"
 JWT_SECRET="your-secret-key"
 ```
 
-## Login Credentials
-- Admin: admin / admin123!
-
 ## Coding Conventions
+
 - Follow existing code style in each file
 - Use TypeScript strictly
 - No comments unless necessary
@@ -170,31 +212,34 @@ JWT_SECRET="your-secret-key"
 - Security best practices: no secrets in code
 - Use bcryptjs for password hashing (not bcrypt)
 - Model names in Prisma use PascalCase (ClienteUsuario, not UsuarioCliente)
-
-## Version Control
-- Git repository
-- Commit messages in Spanish or English, descriptive
-- Never commit secrets or keys
-- Co-author commits with AI assistance
+- Spanish for UI text and user-facing content
+- English for code (variable names, functions)
 
 ## Troubleshooting
 
 ### Prisma Schema Not Found
-If you get "Could not find Prisma Schema" error:
 - Ensure you're in the correct directory: `cd apps/api`
 - Schema location: `apps/api/prisma/schema.prisma`
 
 ### Database Connection Issues
 - Ensure Docker containers are running: `docker ps`
 - Check `.env` file exists in `apps/api/` with correct `DATABASE_URL`
-- Reset database if needed: `docker compose -f infra/docker/compose.yml down -v && docker compose -f infra/docker/compose.yml up --build`
+- Reset: `docker compose -f infra/docker/compose.yml down -v && docker compose -f infra/docker/compose.yml up --build`
 
 ### TypeScript Compilation Errors
 - Check that model names match Prisma schema (e.g., `prisma.clienteUsuario` not `prisma.usuarioCliente`)
 - Use bcryptjs instead of bcrypt for password hashing
 
+## Version Control
+
+- Git repository
+- Commit messages in Spanish or English, descriptive
+- Never commit secrets or keys
+- Co-author commits with AI assistance
+
 ## AI Coordination Notes
-- Always read this file before making changes
+
+- Always read this file (PROJECT.md) before making changes
 - Update this file if project structure or conventions change
 - Use tools to verify changes (lint, typecheck)
 - Commit only when explicitly asked

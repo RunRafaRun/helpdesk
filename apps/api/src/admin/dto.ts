@@ -9,6 +9,8 @@ export class CrearClienteDto {
   @ApiPropertyOptional() @IsOptional() @IsString() logotipo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() jefeProyecto1?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() jefeProyecto2?: string;
+  @ApiPropertyOptional({ enum: ["AAM", "PPU"] })
+  @IsOptional() @IsString() @IsIn(["AAM", "PPU"]) licenciaTipo?: "AAM" | "PPU";
 }
 
 export class CrearUnidadDto {
