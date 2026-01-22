@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TipTapEditor from "../components/TipTapEditor";
+import { Icon } from "../components/Icon";
 import {
   getTarea,
   getTareaTimeline,
@@ -62,21 +63,40 @@ const EVENTO_COLORS: Record<string, { bg: string; border: string; icon: string }
   SISTEMA: { bg: "#F3F4F6", border: "#D1D5DB", icon: "⚙️" },
 };
 
-function Badge({ codigo, label, colorMap }: { codigo?: string; label?: string; colorMap: Record<string, { bg: string; text: string }> }) {
-  const colors = colorMap[codigo ?? ""] ?? { bg: "#E5E7EB", text: "#4B5563" };
+function Badge({ codigo, label, colorMap, prioridad, estado }: {
+  codigo?: string;
+  label?: string;
+  colorMap?: Record<string, { bg: string; text: string }>;
+  prioridad?: { codigo: string; color?: string };
+  estado?: { codigo: string; icono?: string }
+}) {
+  // Use priority color if available, otherwise fall back to colorMap
+  let colors;
+  if (prioridad?.color) {
+    colors = { bg: prioridad.color, text: "#FFFFFF" }; // White text on colored background
+  } else if (colorMap) {
+    colors = colorMap[codigo ?? ""] ?? { bg: "#E5E7EB", text: "#4B5563" };
+  } else {
+    colors = { bg: "#E5E7EB", text: "#4B5563" };
+  }
+
   return (
     <span
       style={{
-        padding: "4px 10px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "2px 8px",
         backgroundColor: colors.bg,
         color: colors.text,
-        borderRadius: "6px",
+        borderRadius: "4px",
         fontSize: "12px",
-        fontWeight: 600,
+        fontWeight: 500,
         whiteSpace: "nowrap",
       }}
     >
-      {label ?? codigo ?? "-"}
+      {estado?.icono && <Icon icon={estado.icono} size={12} style={{ marginRight: 4 }} />}
+      {prioridad?.codigo ?? label ?? codigo ?? "-"}
     </span>
   );
 }
@@ -669,12 +689,14 @@ function CommentEditorModal({
     }
 
     // Agents from previous comments/events
-    for (const event of timeline) {
-      if (event.creadoPorAgenteId && !involvedSet.has(event.creadoPorAgenteId)) {
-        const agente = agentes.find((a) => a.id === event.creadoPorAgenteId);
-        if (agente) {
-          involvedSet.add(agente.id);
-          involvedList.push({ id: agente.id, nombre: agente.nombre, reason: "Comentó anteriormente" });
+    if (timeline) {
+      for (const event of timeline) {
+        if (event.creadoPorAgenteId && !involvedSet.has(event.creadoPorAgenteId)) {
+          const agente = agentes.find((a) => a.id === event.creadoPorAgenteId);
+          if (agente) {
+            involvedSet.add(agente.id);
+            involvedList.push({ id: agente.id, nombre: agente.nombre, reason: "Comentó anteriormente" });
+          }
         }
       }
     }
@@ -688,17 +710,11 @@ function CommentEditorModal({
     return agentes.filter((a) => !involvedIds.has(a.id));
   }, [agentes, involvedAgents]);
 
-  const toggleAgentNotify = (agentId: string) => {
-    setSelectedNotifyAgents((prev) =>
-      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]
-    );
-  };
-
   return (
     <div className="modalOverlay" onClick={onClose}>
       <div
         className="modalCard"
-        style={{ width: "90vw", maxWidth: 950, height: "85vh", maxHeight: 750, overflow: "hidden", display: "flex", flexDirection: "column" }}
+        style={{ width: "95vw", maxWidth: "95vw", height: "95vh", maxHeight: "95vh", overflow: "hidden", display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
@@ -734,7 +750,7 @@ function CommentEditorModal({
               </div>
             </div>
 
-            <div style={{ flex: 1, padding: 20, overflow: "auto" }}>
+            <div style={{ flex: 1, padding: 20, overflow: "auto", minHeight: "400px" }}>
               <TipTapEditor content={content} onChange={setContent} />
             </div>
           </div>
@@ -770,34 +786,39 @@ function CommentEditorModal({
             {/* Add agents to notify */}
             <div style={{ flex: 1, padding: 12, overflow: "auto" }}>
               <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--muted)" }}>NOTIFICAR TAMBIÉN A</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {availableAgents.map((a) => (
-                  <label
-                    key={a.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      cursor: "pointer",
-                      fontSize: 11,
-                      padding: "4px 6px",
-                      borderRadius: 4,
-                      background: selectedNotifyAgents.includes(a.id) ? "#DBEAFE" : "transparent",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedNotifyAgents.includes(a.id)}
-                      onChange={() => toggleAgentNotify(a.id)}
-                      style={{ width: 14, height: 14 }}
-                    />
-                    <span>{a.nombre}</span>
-                  </label>
-                ))}
-                {availableAgents.length === 0 && (
-                  <div style={{ fontSize: 11, color: "var(--muted)" }}>Todos los agentes ya están involucrados</div>
-                )}
-              </div>
+              {availableAgents.length > 0 ? (
+                <select
+                  multiple
+                  className="input"
+                  style={{
+                    width: "100%",
+                    height: "120px",
+                    fontSize: "11px",
+                    padding: "4px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "4px",
+                    background: "white"
+                  }}
+                  value={selectedNotifyAgents}
+                  onChange={(e) => {
+                    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                    setSelectedNotifyAgents(selectedOptions);
+                  }}
+                >
+                  {availableAgents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.nombre}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>Todos los agentes ya están involucrados</div>
+              )}
+              {selectedNotifyAgents.length > 0 && (
+                <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>
+                  {selectedNotifyAgents.length} agente{selectedNotifyAgents.length !== 1 ? 's' : ''} seleccionado{selectedNotifyAgents.length !== 1 ? 's' : ''}
+                </div>
+              )}
             </div>
 
             {selectedNotifyAgents.length > 0 && (
@@ -1042,8 +1063,8 @@ export default function TareaFicha() {
               <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>
                 #{tarea.numero}
               </span>
-              <Badge codigo={tarea.estado?.codigo} label={tarea.estado?.codigo} colorMap={ESTADO_COLORS} />
-              <Badge codigo={tarea.prioridad?.codigo} label={tarea.prioridad?.codigo} colorMap={PRIORIDAD_COLORS} />
+              <Badge estado={tarea.estado} />
+              <Badge prioridad={tarea.prioridad} />
               {isClosed && (
                 <span style={{ padding: "4px 10px", backgroundColor: "#374151", color: "#fff", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
                   CERRADA
@@ -1262,7 +1283,7 @@ export default function TareaFicha() {
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Estado:</div>
-                  <div style={{ lineHeight: 1.3 }}><Badge codigo={tarea.estado?.codigo} colorMap={ESTADO_COLORS} /></div>
+                  <div style={{ lineHeight: 1.3 }}><Badge estado={tarea.estado} /></div>
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Tipo:</div>
@@ -1270,7 +1291,7 @@ export default function TareaFicha() {
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Prioridad:</div>
-                  <div style={{ lineHeight: 1.3 }}><Badge codigo={tarea.prioridad?.codigo} colorMap={PRIORIDAD_COLORS} /></div>
+                  <div style={{ lineHeight: 1.3 }}><Badge prioridad={tarea.prioridad} /></div>
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Módulo:</div>
@@ -1490,15 +1511,18 @@ export default function TareaFicha() {
         <ClientePopup clienteId={tarea.clienteId} onClose={() => setShowClientePopup(false)} />
       )}
 
-      {showCommentEditor && (
-        <CommentEditorModal
-          initialContent=""
-          initialType="RESPUESTA_AGENTE"
-          onSave={handleAddComment}
-          onClose={() => setShowCommentEditor(false)}
-          isEditing={false}
-        />
-      )}
+       {showCommentEditor && (
+         <CommentEditorModal
+           initialContent=""
+           initialType="RESPUESTA_AGENTE"
+           onSave={handleAddComment}
+           onClose={() => setShowCommentEditor(false)}
+           isEditing={false}
+           tarea={tarea}
+           agentes={agentes}
+           timeline={timeline}
+         />
+       )}
     </div>
   );
 }

@@ -5,46 +5,66 @@ import { JwtAuthGuard } from "../auth/guards";
 import { IsString, IsOptional, IsInt, IsBoolean } from "class-validator";
 
 export class CreateLookupDto {
-  @ApiProperty()
-  @IsString()
-  codigo!: string;
+   @ApiProperty()
+   @IsString()
+   codigo!: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  descripcion?: string;
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsString()
+   descripcion?: string;
 
-  @ApiProperty({ required: false, default: 0 })
-  @IsOptional()
-  @IsInt()
-  orden?: number;
+   @ApiProperty({ required: false, default: 0 })
+   @IsOptional()
+   @IsInt()
+   orden?: number;
 
-  @ApiProperty({ required: false, default: false })
-  @IsOptional()
-  @IsBoolean()
-  porDefecto?: boolean;
+   @ApiProperty({ required: false, default: false })
+   @IsOptional()
+   @IsBoolean()
+   porDefecto?: boolean;
+
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsString()
+   icono?: string;
+
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsString()
+   color?: string;
 }
 
 export class UpdateLookupDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  codigo?: string;
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsString()
+   codigo?: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  descripcion?: string;
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsString()
+   descripcion?: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsInt()
-  orden?: number;
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsInt()
+   orden?: number;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsBoolean()
-  porDefecto?: boolean;
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsBoolean()
+   porDefecto?: boolean;
+
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsString()
+   icono?: string;
+
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsString()
+   color?: string;
 }
 
 @ApiTags("admin/lookup")
@@ -113,6 +133,7 @@ export class LookupAdminController {
         descripcion: dto.descripcion,
         orden: dto.orden ?? 0,
         porDefecto: dto.porDefecto ?? false,
+        icono: dto.icono,
       },
     });
   }
@@ -128,6 +149,7 @@ export class LookupAdminController {
     if (dto.descripcion !== undefined) data.descripcion = dto.descripcion;
     if (dto.orden !== undefined) data.orden = dto.orden;
     if (dto.porDefecto !== undefined) data.porDefecto = dto.porDefecto;
+    if (dto.icono !== undefined) data.icono = dto.icono;
     return this.prisma.estadoTarea.update({ where: { id }, data });
   }
 
@@ -154,6 +176,7 @@ export class LookupAdminController {
         descripcion: dto.descripcion,
         orden: dto.orden ?? 0,
         porDefecto: dto.porDefecto ?? false,
+        color: dto.color,
       },
     });
   }
@@ -169,6 +192,7 @@ export class LookupAdminController {
     if (dto.descripcion !== undefined) data.descripcion = dto.descripcion;
     if (dto.orden !== undefined) data.orden = dto.orden;
     if (dto.porDefecto !== undefined) data.porDefecto = dto.porDefecto;
+    if (dto.color !== undefined) data.color = dto.color;
     return this.prisma.prioridadTarea.update({ where: { id }, data });
   }
 

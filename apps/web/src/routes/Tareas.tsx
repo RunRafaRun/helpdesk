@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { Icon } from "../components/Icon";
 import {
   listTareas,
   listClientes,
@@ -29,11 +30,29 @@ const PRIORIDAD_COLORS: Record<string, { bg: string; text: string }> = {
   CRITICA: { bg: "#DC2626", text: "#FFFFFF" },
 };
 
-function Badge({ codigo, label, colorMap }: { codigo?: string; label?: string; colorMap: Record<string, { bg: string; text: string }> }) {
-  const colors = colorMap[codigo ?? ""] ?? { bg: "#E5E7EB", text: "#4B5563" };
+function Badge({ codigo, label, colorMap, prioridad, estado }: {
+  codigo?: string;
+  label?: string;
+  colorMap?: Record<string, { bg: string; text: string }>;
+  prioridad?: { codigo: string; color?: string };
+  estado?: { codigo: string; icono?: string }
+}) {
+  // Use priority color if available, otherwise fall back to colorMap
+  let colors;
+  if (prioridad?.color) {
+    colors = { bg: prioridad.color, text: "#FFFFFF" }; // White text on colored background
+  } else if (colorMap) {
+    colors = colorMap[codigo ?? ""] ?? { bg: "#E5E7EB", text: "#4B5563" };
+  } else {
+    colors = { bg: "#E5E7EB", text: "#4B5563" };
+  }
+
   return (
     <span
       style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
         padding: "2px 8px",
         backgroundColor: colors.bg,
         color: colors.text,
@@ -43,7 +62,18 @@ function Badge({ codigo, label, colorMap }: { codigo?: string; label?: string; c
         whiteSpace: "nowrap",
       }}
     >
-      {label ?? codigo ?? "-"}
+      {estado ? (
+        // For estado: show code first, then icon
+        <>
+          {estado.codigo ?? "-"}
+          {estado.icono && <Icon icon={estado.icono} size={12} />}
+        </>
+      ) : (
+        // For prioridad or other: show text only (no icons for prioridad)
+        <>
+          {prioridad?.codigo ?? label ?? codigo ?? "-"}
+        </>
+      )}
     </span>
   );
 }
@@ -281,10 +311,10 @@ export default function Tareas() {
                 <td style={{ fontWeight: 500 }}>{t.titulo}</td>
                 <td>{t.cliente?.codigo ?? "-"}</td>
                 <td>
-                  <Badge codigo={t.estado?.codigo} label={t.estado?.codigo} colorMap={ESTADO_COLORS} />
+                  <Badge estado={t.estado} />
                 </td>
                 <td>
-                  <Badge codigo={t.prioridad?.codigo} label={t.prioridad?.codigo} colorMap={PRIORIDAD_COLORS} />
+                  <Badge prioridad={t.prioridad} />
                 </td>
                 <td style={{ color: t.asignadoA ? "var(--text)" : "var(--muted)" }}>
                   {t.asignadoA?.nombre ?? "Sin asignar"}
