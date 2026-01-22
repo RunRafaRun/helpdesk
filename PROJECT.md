@@ -10,7 +10,7 @@ Helpdesk application with JWT authentication, RBAC (Role-Based Access Control), 
 
 ## Tech Stack
 
-- **Backend (apps/api)**: NestJS with Fastify, Prisma ORM, PostgreSQL, JWT auth
+- **Backend (apps/api)**: NestJS with Fastify, Prisma 7.3.0 ORM, PostgreSQL, JWT auth
 - **Frontend (apps/web)**: React 18, Vite, React Router, Tailwind CSS
 - **Infrastructure**: Docker Compose (PostgreSQL, API, Web containers)
 - **Language**: TypeScript for both backend and frontend
@@ -213,6 +213,13 @@ This creates:
 - 32 software modules (AV-*, AVCLOUD-*, APP-*)
 - 10 dummy hotel chain clients with full data
 - Default task types, states, and priorities
+
+## Prisma Configuration (v7.3.0)
+
+Prisma 7.x uses a new configuration approach:
+- **Schema file**: No longer contains `url` property
+- **Config file**: `apps/api/prisma/prisma.config.ts` contains database URL
+- **Client**: Uses PostgreSQL adapter for direct database connections
 
 ## Environment Setup
 
