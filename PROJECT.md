@@ -141,7 +141,9 @@ Icons are displayed throughout the UI using the `Icon` component (`apps/web/src/
 - Consistent sizing and styling
 - Support for both estado and priority icons
 
-**Estado Display**: Status badges show code first, then icon (e.g., "PENDIENTE 🔄")
+**Estado Display**:
+- Status badges show code first, then icon (e.g., "PENDIENTE 🔄")
+- Estado dropdowns show code + emoji icon (e.g., "PENDIENTE ⏰")
 **Priority Display**: Priority badges show color-coded text only (no icons)
 
 ## Authentication & Permissions

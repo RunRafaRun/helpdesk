@@ -35,6 +35,42 @@ import {
   Cliente,
 } from "../lib/api";
 
+// Helper function to convert icon names to emojis for dropdown display
+function getIconEmoji(icon: string): string {
+  if (!icon) return "";
+
+  // Parse icon format: "prefix:icon-name" or just "icon-name"
+  const iconName = icon.startsWith("lucide:") ? icon.substring(7) : icon.startsWith("mdi:") ? icon.substring(4) : icon;
+
+  // Map common icons to emojis for dropdown display
+  const emojiMap: Record<string, string> = {
+    // Material Design Icons
+    "schedule": "⏰",
+    "check-circle": "✅",
+    "check-circle-outline": "🔘",
+    "lock": "🔒",
+    "help": "❓",
+    "visibility": "👁️",
+    "warning": "⚠️",
+    "cancel": "❌",
+    "refresh": "🔄",
+    "play-arrow": "▶️",
+    "pause": "⏸️",
+
+    // Lucide Icons
+    "clock": "⏰",
+    "user-check": "👤",
+    "check": "✓",
+    "circle-help": "❓",
+    "eye": "👁️",
+    "circle-alert": "⚠️",
+    "circle-x": "❌",
+    "loader": "⏳",
+  };
+
+  return emojiMap[iconName] || "●"; // Default to dot if no emoji found
+}
+
 const ESTADO_COLORS: Record<string, { bg: string; text: string }> = {
   ACEPTADA: { bg: "#DBEAFE", text: "#1D4ED8" },
   RESUELTA: { bg: "#D1FAE5", text: "#059669" },
@@ -1173,7 +1209,9 @@ export default function TareaFicha() {
                   >
                     <option value="">Sin estado</option>
                     {estados.map((e) => (
-                      <option key={e.id} value={e.id}>{e.codigo}</option>
+                      <option key={e.id} value={e.id}>
+                        {e.codigo}{e.icono ? ` ${getIconEmoji(e.icono)}` : ""}
+                      </option>
                     ))}
                   </select>
                 </div>
