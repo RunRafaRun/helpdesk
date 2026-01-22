@@ -30,9 +30,10 @@ docker compose -f infra/docker/compose.yml up --build
 ```
 
 ### Docker Configuration
-- **Database**: PostgreSQL with UTF-8 charset support
-- **API**: Environment variables configured for development
+- **Database**: PostgreSQL 16 with UTF-8 charset support
+- **API**: Prisma 7.3.0 with PostgreSQL adapter, environment variables configured
 - **Web**: Vite dev server with hot reload
+- **Bootstrap**: Automatic Prisma client generation, database sync, and seeding
 
 ### Development URLs
 | Service | URL |
