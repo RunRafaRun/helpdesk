@@ -57,6 +57,10 @@ export async function createAgente(input: { nombre: string; usuario: string; pas
   return request<Agente>("/admin/agentes", { method: "POST", body: JSON.stringify(input) });
 }
 
+export async function updateAgente(id: string, input: { nombre?: string; usuario?: string; password?: string; role?: "ADMIN" | "AGENTE"; email?: string | null }) {
+  return request<Agente>(`/admin/agentes/${id}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
 export type Cliente = {
   id: string;
   codigo: string;
@@ -233,6 +237,10 @@ export async function listModulos() {
 
 export async function createModulo(input: { codigo: string; descripcion?: string }) {
   return request<Modulo>("/admin/modulos", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function updateModulo(id: string, input: { codigo?: string; descripcion?: string }) {
+  return request<Modulo>(`/admin/modulos/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
 export async function deleteModulo(id: string) {
@@ -487,6 +495,7 @@ export type PrioridadTarea = {
   descripcion?: string;
   orden: number;
   porDefecto: boolean;
+  color?: string;
 };
 
 export type TareaEvento = {
@@ -663,11 +672,11 @@ export async function listPrioridadesTarea() {
   return request<PrioridadTarea[]>("/admin/lookup/prioridades-tarea");
 }
 
-export async function createPrioridadTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean }) {
+export async function createPrioridadTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; color?: string }) {
   return request<PrioridadTarea>("/admin/lookup/prioridades-tarea", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updatePrioridadTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean }) {
+export async function updatePrioridadTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; color?: string }) {
   return request<PrioridadTarea>(`/admin/lookup/prioridades-tarea/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
 

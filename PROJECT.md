@@ -131,7 +131,6 @@ These lookup tables have the following fields:
 - `descripcion` (String, optional) - Description
 - `orden` (Int, default 0) - Sort order for dropdowns
 - `porDefecto` (Boolean, default false) - Default value for new tasks (only one can be true)
-- `icono` (String, optional) - Icon identifier in format "prefix:name" (e.g., "mdi:schedule", "lucide:clock") - EstadoTarea only
 - `color` (String, optional) - Hex color code for priority levels - PrioridadTarea only
 
 #### Data Integrity Checks
@@ -139,6 +138,10 @@ These lookup tables have the following fields:
 - **Releases/Hotfixes**: Cannot be deleted if they are referenced by tasks or client release plans
 - **Validation**: All DTOs include proper validation decorators (@IsString, @IsEmail, @IsIn, etc.)
 - **API Updates**: Full CRUD support for all lookup tables with proper error handling
+
+#### Estado Display
+
+Status indicators (EstadoTarea) now display as text-only badges without icons for a cleaner, more professional appearance.
 
 When creating new tasks, the system uses the item with `porDefecto=true` as the default value. If none is set, it uses the first item by `orden`.
 

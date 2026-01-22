@@ -107,7 +107,6 @@ model EstadoTarea {
   descripcion String?
   orden       Int     @default(0)
   porDefecto  Boolean @default(false)
-  icono       String?
   tareas      Tarea[]
 }
 

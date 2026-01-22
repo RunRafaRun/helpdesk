@@ -59,11 +59,6 @@ export class UpdateLookupDto {
    @ApiProperty({ required: false })
    @IsOptional()
    @IsString()
-   icono?: string;
-
-   @ApiProperty({ required: false })
-   @IsOptional()
-   @IsString()
    color?: string;
 }
 
@@ -133,7 +128,6 @@ export class LookupAdminController {
         descripcion: dto.descripcion,
         orden: dto.orden ?? 0,
         porDefecto: dto.porDefecto ?? false,
-        icono: dto.icono,
       },
     });
   }
@@ -149,7 +143,6 @@ export class LookupAdminController {
     if (dto.descripcion !== undefined) data.descripcion = dto.descripcion;
     if (dto.orden !== undefined) data.orden = dto.orden;
     if (dto.porDefecto !== undefined) data.porDefecto = dto.porDefecto;
-    if (dto.icono !== undefined) data.icono = dto.icono;
     return this.prisma.estadoTarea.update({ where: { id }, data });
   }
 

@@ -35,7 +35,7 @@ function Badge({ codigo, label, colorMap, prioridad, estado }: {
   label?: string;
   colorMap?: Record<string, { bg: string; text: string }>;
   prioridad?: { codigo: string; color?: string };
-  estado?: { codigo: string; icono?: string }
+  estado?: { codigo: string }
 }) {
   // Use priority color if available, otherwise fall back to colorMap
   let colors;
@@ -63,10 +63,9 @@ function Badge({ codigo, label, colorMap, prioridad, estado }: {
       }}
     >
       {estado ? (
-        // For estado: show code first, then icon
+        // For estado: show code only
         <>
           {estado.codigo ?? "-"}
-          {estado.icono && <Icon icon={estado.icono} size={12} />}
         </>
       ) : (
         // For prioridad or other: show text only (no icons for prioridad)

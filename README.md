@@ -44,8 +44,8 @@ docker compose -f infra/docker/compose.yml up --build
 - Ficha de cliente (software, contactos, conexiones, releases)
 - Notificaciones masivas con programacion
 - Configuracion de email (SMTP/Azure OAuth)
-- Lookup tables con iconos y colores (tipos, estados, prioridades)
-- Sistema de iconos multi-coleccion (Material Design + Lucide)
+- Lookup tables con colores (tipos, estados, prioridades)
 - Dashboard con estadisticas y colores dinamicos
 - Controles de integridad de datos (releases/hotfixes)
+- Estados sin iconos para apariencia mas profesional
 - Soporte UTF-8 completo en base de datos
