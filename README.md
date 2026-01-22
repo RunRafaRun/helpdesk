@@ -38,11 +38,14 @@ docker compose -f infra/docker/compose.yml up --build
 
 ## Caracteristicas principales
 
-- Autenticacion JWT
-- CRUD de maestros (Clientes, Agentes, Modulos)
+- Autenticacion JWT con validacion completa
+- CRUD de maestros (Clientes, Agentes, Modulos) con validacion
 - Gestion completa de tareas con timeline y comentarios
 - Ficha de cliente (software, contactos, conexiones, releases)
 - Notificaciones masivas con programacion
 - Configuracion de email (SMTP/Azure OAuth)
 - Lookup tables con iconos y colores (tipos, estados, prioridades)
 - Sistema de iconos multi-coleccion (Material Design + Lucide)
+- Dashboard con estadisticas y colores dinamicos
+- Controles de integridad de datos (releases/hotfixes)
+- Soporte UTF-8 completo en base de datos

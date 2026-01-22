@@ -29,6 +29,11 @@ docker compose -f infra/docker/compose.yml down -v
 docker compose -f infra/docker/compose.yml up --build
 ```
 
+### Docker Configuration
+- **Database**: PostgreSQL with UTF-8 charset support
+- **API**: Environment variables configured for development
+- **Web**: Vite dev server with hot reload
+
 ### Development URLs
 | Service | URL |
 |---------|-----|
@@ -82,17 +87,18 @@ infra/
 | `/tareas/nueva` | Create new task form |
 | `/tareas/:id` | Task detail view with timeline and comments |
 | `/notificaciones` | Mass notifications management |
-| `/config/agentes` | Agent management |
+| `/config/agentes` | Agent management with validation |
 | `/config/clientes` | Client list |
 | `/config/clientes/:id` | Client edit form |
 | `/config/modulos` | Module management |
-| `/config/releases` | Release and hotfix management |
+| `/config/releases` | Release/hotfix management with data integrity checks |
 | `/config/roles` | Role and permissions management |
 | `/config/tipos-tarea` | Task types management with icons |
 | `/config/estados-tarea` | Task states management with icons and suggestions |
 | `/config/prioridades-tarea` | Task priorities management with colors |
 | `/config/notificaciones` | Email configuration |
 | `/clientes/:clienteCodigo/ficha` | Client profile view with tabs |
+| `/` (Dashboard) | Statistics dashboard with dynamic priority colors |
 
 ### Key Data Models
 
@@ -124,8 +130,14 @@ These lookup tables have the following fields:
 - `descripcion` (String, optional) - Description
 - `orden` (Int, default 0) - Sort order for dropdowns
 - `porDefecto` (Boolean, default false) - Default value for new tasks (only one can be true)
-- `icono` (String, optional) - Icon identifier in format "prefix:name" (e.g., "mdi:schedule", "lucide:clock")
-- `color` (String, optional) - Hex color code for priority levels
+- `icono` (String, optional) - Icon identifier in format "prefix:name" (e.g., "mdi:schedule", "lucide:clock") - EstadoTarea only
+- `color` (String, optional) - Hex color code for priority levels - PrioridadTarea only
+
+#### Data Integrity Checks
+
+- **Releases/Hotfixes**: Cannot be deleted if they are referenced by tasks or client release plans
+- **Validation**: All DTOs include proper validation decorators (@IsString, @IsEmail, @IsIn, etc.)
+- **API Updates**: Full CRUD support for all lookup tables with proper error handling
 
 When creating new tasks, the system uses the item with `porDefecto=true` as the default value. If none is set, it uses the first item by `orden`.
 
