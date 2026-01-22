@@ -1,11 +1,17 @@
 import { PrismaClient, PermisoCodigo } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import * as bcrypt from "bcryptjs";
 
 // Import additional seed functions
 import { main as seedDummyClientes } from "./seed-dummy-clientes";
 import { main as seedModulos } from "./seed-modulos";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL!;
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const adminUser = "admin";

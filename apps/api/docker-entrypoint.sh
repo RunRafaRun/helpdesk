@@ -37,7 +37,7 @@ echo "[api] prisma generate"
 npx prisma generate
 
 echo "[api] prisma db push (dev bootstrap)"
-npx prisma db push --accept-data-loss
+npx prisma db push --accept-data-loss --url="$DATABASE_URL"
 
 echo "[api] seed (idempotent)"
 npx ts-node prisma/seed.ts
