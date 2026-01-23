@@ -97,7 +97,7 @@ function Badge({ codigo, label, colorMap, prioridad, estado }: {
         whiteSpace: "nowrap",
       }}
     >
-      {prioridad?.codigo ?? estado?.codigo ?? label ?? codigo ?? "-"}
+      {prioridad?.codigo ?? label ?? codigo ?? "-"}
     </span>
   );
 }
@@ -312,8 +312,9 @@ function ClientePopup({ clienteId, onClose }: { clienteId: string; onClose: () =
                     </div>
                   ) : (
                     <span style={{ color: "var(--muted)" }}>Sin release instalado</span>
-             )}
-         </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1051,63 +1052,39 @@ export default function TareaFicha() {
   }
 
   return (
-    <div style={{
-      height: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      background: "var(--bg)",
-      overflow: "hidden"
-    }}>
-      {/* Compact Header - Single row */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "8px 16px",
-        borderBottom: "1px solid var(--border)",
-        background: "var(--bg-secondary)",
-        flexShrink: 0
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button className="btn" onClick={() => navigate("/")} style={{ padding: "4px 8px" }}>
+    <div className="grid">
+      {/* Header */}
+      <div className="topbar">
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <button className="btn" onClick={() => navigate("/")}>
             ← Volver
           </button>
-          <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>
-            #{tarea.numero}
-          </span>
-          <Badge estado={tarea.estado} />
-          <Badge prioridad={tarea.prioridad} />
-          {isClosed && (
-            <span style={{
-              padding: "2px 6px",
-              backgroundColor: "#374151",
-              color: "#fff",
-              borderRadius: "4px",
-              fontSize: "11px",
-              fontWeight: 600
-            }}>
-              CERRADA
-            </span>
-          )}
-          <div style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: "var(--text)",
-            maxWidth: 300,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap"
-          }}>
-            {tarea.titulo}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>
+                #{tarea.numero}
+              </span>
+               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                 <span style={{ fontSize: 12, color: "var(--muted)" }}>Estado:</span>
+                 <Badge estado={tarea.estado} />
+               </div>
+              <Badge prioridad={tarea.prioridad} />
+              {isClosed && (
+                <span style={{ padding: "4px 10px", backgroundColor: "#374151", color: "#fff", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
+                  CERRADA
+                </span>
+              )}
+            </div>
+            <div className="h1" style={{ marginTop: 4 }}>{tarea.titulo}</div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           {!isClosed && (
             <>
-               <button className="btn" onClick={() => setEditing(!editing)} style={{ padding: "4px 8px", fontSize: 12 }}>
+               <button className="btn" onClick={() => setEditing(!editing)}>
                  {editing ? "Cancelar" : "Editar"}
                </button>
-               <button className="btn primary" onClick={handleClose} style={{ padding: "4px 8px", fontSize: 12 }}>
+               <button className="btn primary" onClick={handleClose}>
                  Cerrar Tarea
                </button>
             </>
@@ -1115,47 +1092,68 @@ export default function TareaFicha() {
         </div>
       </div>
 
-      {/* Compact Task Info Bar */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "6px 16px",
-        background: "var(--bg)",
-        borderBottom: "1px solid var(--border)",
-        flexShrink: 0,
-        fontSize: 12
-      }}>
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <div>
-            <span className="label" style={{ marginRight: 4 }}>Cliente:</span>
-            <strong>{tarea.cliente?.codigo}</strong>
-            <button
-              className="btn"
-              style={{ padding: "1px 4px", fontSize: 9, marginLeft: 4, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-              onClick={() => setShowClientePopup(true)}
-              title="Ver ficha del cliente"
-            >
-              👁
-            </button>
+      {/* Collapsible Task Info Panel */}
+      <div className="card" style={{ padding: 0 }}>
+        {/* Summary row (always visible) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "8px 16px",
+            cursor: "pointer",
+            background: infoExpanded ? "var(--bg-secondary)" : "transparent",
+          }}
+          onClick={() => setInfoExpanded(!infoExpanded)}
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center", fontSize: 13 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span className="label">Cliente:</span>
+              <strong>{tarea.cliente?.codigo}</strong>
+              <button
+                className="btn"
+                style={{ padding: "2px 5px", fontSize: 10, marginLeft: 2, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                onClick={(e) => { e.stopPropagation(); setShowClientePopup(true); }}
+                title="Ver ficha del cliente"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span className="label">U.C.:</span>
+              <span>{tarea.unidadComercial?.codigo ?? "-"}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span className="label">Módulo:</span>
+              <span>{tarea.modulo?.codigo ?? "-"}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span className="label">Asignado:</span>
+              <span style={{ fontWeight: tarea.asignadoA ? 500 : 400, color: tarea.asignadoA ? "var(--text)" : "var(--muted)" }}>
+                {tarea.asignadoA?.nombre ?? "Sin asignar"}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span className="label">Release:</span>
+              <span>{tarea.release?.codigo ?? "-"}{tarea.hotfix ? ` / ${tarea.hotfix.codigo}` : ""}</span>
+            </div>
           </div>
-          <div><span className="label">U.C.:</span> {tarea.unidadComercial?.codigo ?? "-"}</div>
-          <div><span className="label">Módulo:</span> {tarea.modulo?.codigo ?? "-"}</div>
-          <div>
-            <span className="label">Asignado:</span>
-            <span style={{ fontWeight: tarea.asignadoA ? 500 : 400, color: tarea.asignadoA ? "var(--text)" : "var(--muted)" }}>
-              {tarea.asignadoA?.nombre ?? "Sin asignar"}
-            </span>
-          </div>
-          <div><span className="label">Release:</span> {tarea.release?.codigo ?? "-"}{tarea.hotfix ? `/${tarea.hotfix.codigo}` : ""}</div>
+          <button
+            className="btn"
+            style={{ padding: "4px 10px", fontSize: 11 }}
+            onClick={(e) => { e.stopPropagation(); setInfoExpanded(!infoExpanded); }}
+          >
+            {infoExpanded ? "▲ Ocultar" : "▼ Ver más"}
+          </button>
         </div>
-        <div style={{ fontSize: 11, color: "var(--muted)" }}>
-          Creada: {new Date(tarea.createdAt).toLocaleDateString("es-ES")}
-        </div>
-      </div>
 
-        {/* Inline Edit Form (when editing) */}
-        {editing && (
+        {/* Expanded details (editing or viewing) */}
+        {infoExpanded && (
+          <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)" }}>
+            {editing ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Título</div>
@@ -1270,74 +1268,100 @@ export default function TareaFicha() {
                   </button>
                 </div>
               </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "8px 16px", fontSize: 12 }}>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Número:</div>
+                  <div style={{ fontFamily: "monospace", fontWeight: 600, lineHeight: 1.3 }}>{tarea.numero}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Cliente:</div>
+                  <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }} title={`${tarea.cliente?.codigo} - ${tarea.cliente?.descripcion || ""}`}>
+                    {tarea.cliente?.codigo} {tarea.cliente?.descripcion && `- ${tarea.cliente.descripcion}`}
+                  </div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>U. Comercial:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.unidadComercial?.codigo ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Estado:</div>
+                  <div style={{ lineHeight: 1.3 }}><Badge estado={tarea.estado} /></div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Tipo:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.tipo?.codigo ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Prioridad:</div>
+                  <div style={{ lineHeight: 1.3 }}><Badge prioridad={tarea.prioridad} /></div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Módulo:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.modulo?.codigo ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Release:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.release?.codigo ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Hotfix:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.hotfix?.codigo ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Asignado a:</div>
+                  <div style={{ fontWeight: tarea.asignadoA ? 500 : 400, color: tarea.asignadoA ? "var(--text)" : "var(--muted)", lineHeight: 1.3 }}>
+                    {tarea.asignadoA?.nombre ?? "Sin asignar"}
+                  </div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Jefe Proy. 1:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.cliente?.jefeProyecto1 ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Jefe Proy. 2:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.cliente?.jefeProyecto2 ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Reproducido:</div>
+                  <div style={{ lineHeight: 1.3 }}>{tarea.reproducido ? "Sí" : "No"}</div>
+                </div>
+                <div>
+                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Creada:</div>
+                  <div style={{ lineHeight: 1.3 }}>{formatDate(tarea.createdAt)}</div>
+                </div>
+                {tarea.closedAt && (
+                  <div>
+                    <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Cerrada:</div>
+                    <div style={{ lineHeight: 1.3 }}>{formatDate(tarea.closedAt)}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Comments section - Full width */}
+      <div className="card" style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div className="h2">Comentarios ({comments.length})</div>
+            {!isClosed && (
+              <button className="btn primary" onClick={() => setShowCommentEditor(true)}>
+                + Nuevo Comentario
+              </button>
             )}
           </div>
 
-
-        )}
-
-      {/* Comments section - Takes all remaining space */}
-      <div style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "var(--bg)"
-      }}>
-        {/* Comments Header */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "12px 16px",
-          borderBottom: "1px solid var(--border)",
-          background: "var(--bg-secondary)",
-          flexShrink: 0
-        }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
-            Comentarios ({comments.length})
-          </div>
-          {!isClosed && (
-            <button className="btn primary" onClick={() => setShowCommentEditor(true)} style={{ padding: "6px 12px" }}>
-              + Nuevo
-            </button>
-          )}
-        </div>
-
-        {/* Comments List - Takes available space, split with detail */}
-        <div style={{
-          flex: selectedComment ? 0.4 : 1,
-          minHeight: 200,
-          overflow: "auto",
-          borderBottom: selectedComment ? "1px solid var(--border)" : "none",
-          background: "var(--bg)"
-        }}>
-          {comments.length === 0 ? (
-            <div style={{
-              textAlign: "center",
-              color: "var(--muted)",
-              padding: 48,
-              fontSize: 16
-            }}>
-              No hay comentarios en esta tarea
-            </div>
-          ) : (
-            <div>
-              {/* Debug info - compact */}
-              <div style={{
-                padding: "6px 16px",
-                background: "#f8f9fa",
-                fontSize: 11,
-                borderBottom: "1px solid var(--border)"
-              }}>
-                <strong>Debug:</strong> {comments.length} comentarios |
-                Tipos: {comments.map(c => c.tipo).join(', ')} |
-                Orden: {commentsOrderAsc ? 'Antiguos primero' : 'Recientes primero'}
+          {/* Comments list */}
+          <div style={{ flex: 1, minHeight: 200, maxHeight: 300, overflow: "auto", borderBottom: "1px solid var(--border)", marginBottom: 16 }}>
+            {comments.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#6B7280", padding: 24 }}>
+                No hay comentarios
               </div>
-
-              {/* Compact table */}
-              <table className="table" style={{ fontSize: 13, margin: 0 }}>
-                 <thead>
+            ) : (
+              <table className="table" style={{ fontSize: 13 }}>
+                <thead>
                     <tr>
                       <th
                         style={{
@@ -1361,252 +1385,168 @@ export default function TareaFicha() {
                           ▲
                         </span>
                       </th>
-                      <th style={{ width: 140 }}>Fecha/Hora</th>
+                      <th style={{ width: 120 }}>Fecha/Hora</th>
                       <th style={{ width: 100 }}>Tipo</th>
                       <th>Relacionado</th>
                       <th>Descripción</th>
                     </tr>
                  </thead>
-                   <tbody>
-                     {(() => {
-                       // Debug: Log comment types and order
-                       console.log("Comments timeline:", comments.map(c => ({ tipo: c.tipo, createdAt: c.createdAt })));
+                  <tbody>
+                    {(() => {
+                      // Always number chronologically (oldest = #1)
+                      const chronologicalOrder = [...comments].reverse(); // API gives newest first, so reverse for chronological
 
-                       // Always number chronologically (oldest = #1)
-                       const chronologicalOrder = [...comments].reverse(); // API gives newest first, so reverse for chronological
-                       console.log("Chronological order:", chronologicalOrder.map(c => c.tipo));
+                      // Build relationship mapping based on chronological order
+                      const chronologicalRelationships = new Map<string, string>();
 
-                       // Build relationship mapping: RESPUESTA_AGENTE relates to most recent MENSAJE_CLIENTE before it
-                       const chronologicalRelationships = new Map<string, string>();
-                       let lastClientMessageIndex = -1;
+                      for (let i = 0; i < chronologicalOrder.length; i++) {
+                        const evento = chronologicalOrder[i];
+                        if (evento.tipo === "RESPUESTA_AGENTE") {
+                          // Check if next chronological event is MENSAJE_CLIENTE
+                          const nextEvent = i < chronologicalOrder.length - 1 ? chronologicalOrder[i + 1] : null;
+                          if (nextEvent?.tipo === "MENSAJE_CLIENTE") {
+                            chronologicalRelationships.set(evento.id, `#${i + 2}`); // Reference chronological number
+                          }
+                        }
+                      }
 
-                       for (let i = 0; i < chronologicalOrder.length; i++) {
-                         const evento = chronologicalOrder[i];
-                         console.log(`Event ${i + 1}: ${evento.tipo}`);
+                      // Create chronological number mapping for each event
+                      const chronologicalNumbers = new Map<string, number>();
+                      chronologicalOrder.forEach((evento, index) => {
+                        chronologicalNumbers.set(evento.id, index + 1);
+                      });
 
-                         if (evento.tipo === "MENSAJE_CLIENTE") {
-                           lastClientMessageIndex = i;
-                           console.log(`  Updated last client message index to ${i + 1}`);
-                         } else if (evento.tipo === "RESPUESTA_AGENTE" && lastClientMessageIndex >= 0) {
-                           chronologicalRelationships.set(evento.id, `#${lastClientMessageIndex + 1}`);
-                           console.log(`  Set relationship: RESPUESTA_AGENTE -> MENSAJE_CLIENTE #${lastClientMessageIndex + 1}`);
-                         }
-                       }
+                      // Sort comments for display based on user preference
+                      const displayComments = commentsOrderAsc
+                        ? [...comments].reverse() // ASC: oldest first
+                        : [...comments]; // DESC: newest first (default)
 
-                       console.log("Relationships found:", Array.from(chronologicalRelationships.entries()));
+                      return displayComments.map((evento) => {
+                        const colors = EVENTO_COLORS[evento.tipo] ?? EVENTO_COLORS.SISTEMA;
+                        const isSelected = selectedComment?.id === evento.id;
 
-                       // Debug: Show relationships in UI
-                       if (chronologicalRelationships.size > 0) {
-                         console.log("Found relationships:", chronologicalRelationships.size);
-                       } else {
-                         console.log("No relationships found - check if there are RESPUESTA_AGENTE and MENSAJE_CLIENTE pairs");
-                       }
+                        // Always show chronological number (#1 = oldest)
+                        const chronologicalNumber = chronologicalNumbers.get(evento.id) || 0;
 
-                       // Create chronological number mapping for each event
-                       const chronologicalNumbers = new Map<string, number>();
-                       chronologicalOrder.forEach((evento, index) => {
-                         chronologicalNumbers.set(evento.id, index + 1);
-                       });
+                        // Get chronological relationship
+                        const relatedTo = chronologicalRelationships.get(evento.id) || "";
 
-                       // Sort comments for display based on user preference
-                       const displayComments = commentsOrderAsc
-                         ? [...comments].reverse() // ASC: oldest first
-                         : [...comments]; // DESC: newest first (default)
-
-                       return displayComments.map((evento) => {
-                         const colors = EVENTO_COLORS[evento.tipo] ?? EVENTO_COLORS.SISTEMA;
-                         const isSelected = selectedComment?.id === evento.id;
-
-                         // Always show chronological number (#1 = oldest)
-                         const chronologicalNumber = chronologicalNumbers.get(evento.id) || 0;
-
-                         // Get chronological relationship
-                         const relatedTo = chronologicalRelationships.get(evento.id) || "";
-
-                         return (
-                           <tr
-                             key={evento.id}
-                             onClick={() => setSelectedComment(evento)}
-                             style={{
-                               cursor: "pointer",
-                               backgroundColor: isSelected ? "var(--accent)" : "transparent",
-                               color: isSelected ? "#fff" : "var(--text)",
-                             }}
-                           >
-                             <td style={{ textAlign: "center", fontWeight: 600, color: "var(--muted)" }}>
-                               {chronologicalNumber}
-                             </td>
-                             <td>
-                               {formatDate(evento.createdAt)}
-                             </td>
-                             <td>
-                               <span style={{
-                                 display: "inline-flex",
-                                 alignItems: "center",
-                                 gap: 4,
-                                 padding: "2px 6px",
-                                 borderRadius: 4,
-                                 background: isSelected ? "rgba(255,255,255,0.2)" : colors.bg,
-                                 fontSize: 11,
-                               }}>
-                                 {colors.icon} {evento.tipo === "MENSAJE_CLIENTE" ? "Cliente" : evento.tipo === "RESPUESTA_AGENTE" ? "Agente" : "Interno"}
-                               </span>
-                             </td>
-                             <td style={{ textAlign: "center", fontWeight: 600, color: relatedTo ? "var(--accent)" : "var(--muted)" }}>
-                               {relatedTo || "-"}
-                             </td>
-                             <td style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                               {evento.cuerpo?.replace(/<[^>]*>/g, "").substring(0, 60)}...
-                             </td>
-                           </tr>
-                         );
-                        });
-                     })()}
-                   </tbody>
-                 </table>
-               </div>
-             )}
-           </div>
-
-        {/* Selected Comment Detail - Large reading area */}
-        {selectedComment ? (
-          <div style={{
-            flex: 0.6,
-            minHeight: 300,
-            overflow: "auto",
-            background: "var(--bg)",
-            padding: "20px"
-          }}>
-            {/* Comment Header */}
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              marginBottom: 20,
-              paddingBottom: 12,
-              borderBottom: "1px solid var(--border)"
-            }}>
-              <div>
-                <div style={{
-                  fontSize: 18,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8
-                }}>
-                  {EVENTO_COLORS[selectedComment.tipo]?.icon}
-                  {selectedComment.tipo.replace(/_/g, " ")}
-                  {!selectedComment.visibleParaCliente && (
-                    <span style={{
-                      fontSize: 11,
-                      padding: "2px 8px",
-                      backgroundColor: "#374151",
-                      color: "#fff",
-                      borderRadius: 4
-                    }}>
-                      Interno
-                    </span>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: 13,
-                  color: "var(--muted)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <span>{formatDate(selectedComment.createdAt)}</span>
-                  <span>#{chronologicalNumbers.get(selectedComment.id)}</span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: "flex", gap: 8 }}>
-                {!isClosed && selectedComment.tipo !== "MENSAJE_CLIENTE" && (
-                  <>
-                    <button className="btn" style={{ padding: "6px 12px", fontSize: 12 }}>Editar</button>
-                    <button className="btn" style={{
-                      padding: "6px 12px",
-                      fontSize: 12,
-                      backgroundColor: "var(--danger)",
-                      color: "white",
-                      border: "none"
-                    }}>Eliminar</button>
-                  </>
-                )}
-                {!isClosed && (
-                  <button className="btn primary" style={{
-                    padding: "6px 12px",
-                    fontSize: 12
-                  }} onClick={() => setShowCommentEditor(true)}>
-                    Responder
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Comment Content - Large, readable area */}
-            <div
-              className="comment-content"
-              style={{
-                fontSize: 16,
-                lineHeight: 1.7,
-                color: "var(--text)",
-                overflowWrap: "break-word",
-                wordWrap: "break-word",
-                padding: "16px",
-                backgroundColor: EVENTO_COLORS[selectedComment.tipo]?.bg ?? "#F8F9FA",
-                border: `1px solid ${EVENTO_COLORS[selectedComment.tipo]?.border ?? "#E5E7EB"}`,
-                borderRadius: 8,
-                minHeight: 200
-              }}
-              dangerouslySetInnerHTML={{ __html: selectedComment.cuerpo ?? "" }}
-            />
-
-            <style>{`
-              .comment-content {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              }
-              .comment-content img {
-                max-width: 100%;
-                height: auto;
-                display: block;
-                margin: 12px 0;
-                border-radius: 4px;
-              }
-              .comment-content p {
-                margin: 8px 0;
-              }
-              .comment-content blockquote {
-                border-left: 3px solid var(--accent);
-                padding-left: 12px;
-                margin: 12px 0;
-                color: var(--muted);
-                font-style: italic;
-              }
-            `}</style>
-
-            {/* Notifications section */}
-            <div style={{ marginTop: 16, padding: "12px", backgroundColor: "var(--bg-secondary)", borderRadius: 6, border: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>
-                NOTIFICACIONES ENVIADAS
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                  <span style={{ color: "var(--muted)" }}>👥</span>
-                  <span>Agentes: Ninguno</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "var(--muted)" }}>👤</span>
-                  <span>Usuarios del cliente: Ninguno</span>
-                </div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
-                  Sistema de notificaciones próximamente disponible
-                </div>
-              </div>
-            </div>
+                        return (
+                          <tr
+                            key={evento.id}
+                            onClick={() => setSelectedComment(evento)}
+                            style={{
+                              cursor: "pointer",
+                              backgroundColor: isSelected ? "var(--accent)" : "transparent",
+                              color: isSelected ? "#fff" : "var(--text)",
+                            }}
+                          >
+                            <td style={{ textAlign: "center", fontWeight: 600, color: "var(--muted)" }}>
+                              {chronologicalNumber}
+                            </td>
+                            <td>
+                              {formatDate(evento.createdAt)}
+                            </td>
+                            <td>
+                              <span style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                background: isSelected ? "rgba(255,255,255,0.2)" : colors.bg,
+                                fontSize: 11,
+                              }}>
+                                {colors.icon} {evento.tipo === "MENSAJE_CLIENTE" ? "Cliente" : evento.tipo === "RESPUESTA_AGENTE" ? "Agente" : "Interno"}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: "center", fontWeight: 600, color: relatedTo ? "var(--accent)" : "var(--muted)" }}>
+                              {relatedTo || "-"}
+                            </td>
+                            <td style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {evento.cuerpo?.replace(/<[^>]*>/g, "").substring(0, 60)}...
+                            </td>
+                        </tr>
+                      );
+                      });
+                    })()}
+                </tbody>
+              </table>
+            )}
           </div>
+
+          {/* Selected comment detail */}
+          <div style={{ flex: 1, minHeight: 150, overflow: "auto" }}>
+            <div className="label" style={{ marginBottom: 8 }}>Detalle del comentario seleccionado</div>
+            {selectedComment ? (
+              <div style={{
+                padding: 16,
+                backgroundColor: EVENTO_COLORS[selectedComment.tipo]?.bg ?? "#F3F4F6",
+                border: `1px solid ${EVENTO_COLORS[selectedComment.tipo]?.border ?? "#D1D5DB"}`,
+                borderRadius: 8,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      {EVENTO_COLORS[selectedComment.tipo]?.icon} {selectedComment.tipo.replace(/_/g, " ")}
+                      {!selectedComment.visibleParaCliente && (
+                        <span style={{ fontSize: 10, padding: "2px 6px", backgroundColor: "#374151", color: "#fff", borderRadius: 4, marginLeft: 8 }}>
+                          Interno
+                        </span>
+                      )}
+                    </div>
+                    <div className="small">{formatDate(selectedComment.createdAt)}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {!isClosed && selectedComment.tipo !== "MENSAJE_CLIENTE" && (
+                      <>
+                        <button className="btn" style={{ padding: "4px 8px", fontSize: 11 }}>Editar</button>
+                        <button className="btn" style={{ padding: "4px 8px", fontSize: 11, color: "var(--danger)" }}>Eliminar</button>
+                      </>
+                    )}
+                    {!isClosed && (
+                      <button className="btn primary" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setShowCommentEditor(true)}>
+                        Responder
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div
+                  className="comment-content"
+                  style={{ fontSize: 14, lineHeight: 1.6, overflow: "hidden", wordWrap: "break-word", overflowWrap: "break-word" }}
+                  dangerouslySetInnerHTML={{ __html: selectedComment.cuerpo ?? "" }}
+                />
+                 <style>{`
+                   .comment-content img {
+                     max-width: 100%;
+                     height: auto;
+                     display: block;
+                   }
+                   .comment-content * {
+                     max-width: 100%;
+                   }
+                 `}</style>
+
+                 {/* Notifications section */}
+                 <div style={{ marginTop: 16, padding: "12px", backgroundColor: "var(--bg-secondary)", borderRadius: 6, border: "1px solid var(--border)" }}>
+                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>
+                     NOTIFICACIONES ENVIADAS
+                   </div>
+                   <div style={{ fontSize: 12, color: "var(--text)" }}>
+                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                       <span style={{ color: "var(--muted)" }}>👥</span>
+                       <span>Agentes: Ninguno</span>
+                     </div>
+                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                       <span style={{ color: "var(--muted)" }}>👤</span>
+                       <span>Usuarios del cliente: Ninguno</span>
+                     </div>
+                     <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
+                       Sistema de notificaciones próximamente disponible
+                     </div>
+                   </div>
+                 </div>
+              </div>
             ) : (
               <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", border: "1px dashed var(--border)", borderRadius: 8 }}>
                 Selecciona un comentario de la lista para ver el detalle
@@ -1645,23 +1585,22 @@ export default function TareaFicha() {
         </div>
       )}
 
-        {/* Modals */}
-        {showClientePopup && tarea.clienteId && (
-          <ClientePopup clienteId={tarea.clienteId} onClose={() => setShowClientePopup(false)} />
-        )}
+      {showClientePopup && tarea.clienteId && (
+        <ClientePopup clienteId={tarea.clienteId} onClose={() => setShowClientePopup(false)} />
+      )}
 
-        {showCommentEditor && (
-          <CommentEditorModal
-            initialContent=""
-            initialType="RESPUESTA_AGENTE"
-            onSave={handleAddComment}
-            onClose={() => setShowCommentEditor(false)}
-            isEditing={false}
-            tarea={tarea}
-            agentes={agentes}
-            timeline={timeline}
-          />
-        )}
-      </div>
+       {showCommentEditor && (
+         <CommentEditorModal
+           initialContent=""
+           initialType="RESPUESTA_AGENTE"
+           onSave={handleAddComment}
+           onClose={() => setShowCommentEditor(false)}
+           isEditing={false}
+           tarea={tarea}
+           agentes={agentes}
+           timeline={timeline}
+         />
+       )}
+    </div>
   );
 }
