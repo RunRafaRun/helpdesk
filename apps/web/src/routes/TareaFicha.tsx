@@ -1063,7 +1063,10 @@ export default function TareaFicha() {
               <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>
                 #{tarea.numero}
               </span>
-              <Badge estado={tarea.estado} />
+               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                 <span style={{ fontSize: 12, color: "var(--muted)" }}>Estado:</span>
+                 <Badge estado={tarea.estado} />
+               </div>
               <Badge prioridad={tarea.prioridad} />
               {isClosed && (
                 <span style={{ padding: "4px 10px", backgroundColor: "#374151", color: "#fff", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
@@ -1077,15 +1080,12 @@ export default function TareaFicha() {
         <div style={{ display: "flex", gap: 8 }}>
           {!isClosed && (
             <>
-              <button className="btn" onClick={() => setEditing(!editing)}>
-                {editing ? "Cancelar" : "Editar"}
-              </button>
-              <button className="btn" onClick={() => setShowAssignModal(true)}>
-                Cambiar Responsable
-              </button>
-              <button className="btn primary" onClick={handleClose}>
-                Cerrar Tarea
-              </button>
+               <button className="btn" onClick={() => setEditing(!editing)}>
+                 {editing ? "Cancelar" : "Editar"}
+               </button>
+               <button className="btn primary" onClick={handleClose}>
+                 Cerrar Tarea
+               </button>
             </>
           )}
         </div>
@@ -1361,59 +1361,67 @@ export default function TareaFicha() {
             ) : (
               <table className="table" style={{ fontSize: 13 }}>
                 <thead>
-                  <tr>
-                    <th style={{ width: 140 }}>Fecha/Hora</th>
-                    <th style={{ width: 100 }}>Tipo</th>
-                    <th>Descripción</th>
-                    <th style={{ width: 80 }}>Acciones</th>
-                  </tr>
+                   <tr>
+                     <th style={{ width: 140 }}>Fecha/Hora</th>
+                     <th style={{ width: 100 }}>Tipo</th>
+                     <th>Descripción</th>
+                   </tr>
                 </thead>
-                <tbody>
-                  {comments.map((evento) => {
-                    const colors = EVENTO_COLORS[evento.tipo] ?? EVENTO_COLORS.SISTEMA;
-                    const isSelected = selectedComment?.id === evento.id;
-                    return (
-                      <tr
-                        key={evento.id}
-                        onClick={() => setSelectedComment(evento)}
-                        style={{
-                          cursor: "pointer",
-                          backgroundColor: isSelected ? "var(--accent)" : "transparent",
-                          color: isSelected ? "#fff" : "var(--text)",
-                        }}
-                      >
-                        <td>{formatDate(evento.createdAt)}</td>
-                        <td>
-                          <span style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                            background: isSelected ? "rgba(255,255,255,0.2)" : colors.bg,
-                            fontSize: 11,
-                          }}>
-                            {colors.icon} {evento.tipo === "MENSAJE_CLIENTE" ? "Cliente" : evento.tipo === "RESPUESTA_AGENTE" ? "Agente" : "Interno"}
-                          </span>
-                        </td>
-                        <td style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {evento.cuerpo?.replace(/<[^>]*>/g, "").substring(0, 60)}...
-                        </td>
-                        <td>
-                          <button
-                            className="btn"
-                            style={{ padding: "2px 6px", fontSize: 11 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedComment(evento);
-                            }}
-                          >
-                            Ver
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                 <tbody>
+                   {comments.map((evento, index) => {
+                     const colors = EVENTO_COLORS[evento.tipo] ?? EVENTO_COLORS.SISTEMA;
+                     const isSelected = selectedComment?.id === evento.id;
+
+                     // Simple threading logic: RESPUESTA_AGENTE replies to previous MENSAJE_CLIENTE
+                     const isReply = evento.tipo === "RESPUESTA_AGENTE";
+                     const previousEvent = index > 0 ? comments[index - 1] : null;
+                     const isReplyToPrevious = isReply && previousEvent?.tipo === "MENSAJE_CLIENTE";
+
+                     return (
+                       <tr
+                         key={evento.id}
+                         onClick={() => setSelectedComment(evento)}
+                         style={{
+                           cursor: "pointer",
+                           backgroundColor: isSelected ? "var(--accent)" : "transparent",
+                           color: isSelected ? "#fff" : "var(--text)",
+                           position: "relative",
+                         }}
+                       >
+                         {isReplyToPrevious && (
+                           <div style={{
+                             position: "absolute",
+                             left: "-12px",
+                             top: 0,
+                             bottom: 0,
+                             width: "2px",
+                             backgroundColor: "#3B82F6",
+                             borderRadius: "1px",
+                           }} />
+                         )}
+                         <td style={{ paddingLeft: isReplyToPrevious ? "20px" : "12px" }}>
+                           {formatDate(evento.createdAt)}
+                         </td>
+                         <td>
+                           <span style={{
+                             display: "inline-flex",
+                             alignItems: "center",
+                             gap: 4,
+                             padding: "2px 6px",
+                             borderRadius: 4,
+                             background: isSelected ? "rgba(255,255,255,0.2)" : colors.bg,
+                             fontSize: 11,
+                           }}>
+                             {colors.icon} {evento.tipo === "MENSAJE_CLIENTE" ? "Cliente" : evento.tipo === "RESPUESTA_AGENTE" ? "Agente" : "Interno"}
+                             {isReplyToPrevious && <span style={{ fontSize: 8, marginLeft: 2 }}>↳</span>}
+                           </span>
+                         </td>
+                         <td style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: isReplyToPrevious ? "20px" : "12px" }}>
+                           {evento.cuerpo?.replace(/<[^>]*>/g, "").substring(0, 60)}...
+                         </td>
+                       </tr>
+                     );
+                   })}
                 </tbody>
               </table>
             )}
@@ -1460,16 +1468,36 @@ export default function TareaFicha() {
                   style={{ fontSize: 14, lineHeight: 1.6, overflow: "hidden", wordWrap: "break-word", overflowWrap: "break-word" }}
                   dangerouslySetInnerHTML={{ __html: selectedComment.cuerpo ?? "" }}
                 />
-                <style>{`
-                  .comment-content img {
-                    max-width: 100%;
-                    height: auto;
-                    display: block;
-                  }
-                  .comment-content * {
-                    max-width: 100%;
-                  }
-                `}</style>
+                 <style>{`
+                   .comment-content img {
+                     max-width: 100%;
+                     height: auto;
+                     display: block;
+                   }
+                   .comment-content * {
+                     max-width: 100%;
+                   }
+                 `}</style>
+
+                 {/* Notifications section */}
+                 <div style={{ marginTop: 16, padding: "12px", backgroundColor: "var(--bg-secondary)", borderRadius: 6, border: "1px solid var(--border)" }}>
+                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>
+                     NOTIFICACIONES ENVIADAS
+                   </div>
+                   <div style={{ fontSize: 12, color: "var(--text)" }}>
+                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                       <span style={{ color: "var(--muted)" }}>👥</span>
+                       <span>Agentes: Ninguno</span>
+                     </div>
+                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                       <span style={{ color: "var(--muted)" }}>👤</span>
+                       <span>Usuarios del cliente: Ninguno</span>
+                     </div>
+                     <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
+                       Sistema de notificaciones próximamente disponible
+                     </div>
+                   </div>
+                 </div>
               </div>
             ) : (
               <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", border: "1px dashed var(--border)", borderRadius: 8 }}>
