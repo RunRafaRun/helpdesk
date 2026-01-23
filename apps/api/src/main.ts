@@ -11,6 +11,24 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
+  // Configure UTF-8 charset for proper Spanish character support
+  const fastifyInstance = app.getHttpAdapter().getInstance();
+
+    // Configure JSON serialization with UTF-8
+    fastifyInstance.setSerializerCompiler(({ schema, method, url, httpStatus }) => {
+      return (data) => {
+        return JSON.stringify(data); // Compact JSON.stringify with UTF-8 support
+      };
+    });
+
+  // Set UTF-8 headers for all JSON responses
+  fastifyInstance.addHook('onSend', (request, reply, payload, done) => {
+    if (reply.getHeader('content-type')?.toString().includes('application/json')) {
+      reply.header('content-type', 'application/json; charset=utf-8');
+    }
+    done(null, payload);
+  });
+
   app.enableCors({ origin: true, credentials: true });
 
   app.useGlobalPipes(
@@ -20,6 +38,8 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+
 
   const config = new DocumentBuilder()
     .setTitle("Helpdesk API")

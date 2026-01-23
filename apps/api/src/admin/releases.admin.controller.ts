@@ -55,6 +55,24 @@ export class ReleasesAdminController {
 
   @Delete(":id")
   async remove(@Param("id") id: string) {
+    // Check if release is being used in tasks
+    const tasksUsingRelease = await this.prisma.tarea.count({
+      where: { releaseId: id }
+    });
+
+    if (tasksUsingRelease > 0) {
+      throw new Error(`No se puede eliminar el release porque está siendo usado en ${tasksUsingRelease} tarea(s)`);
+    }
+
+    // Check if release is being used in client release plans
+    const clientPlansUsingRelease = await this.prisma.clienteReleasePlan.count({
+      where: { releaseId: id }
+    });
+
+    if (clientPlansUsingRelease > 0) {
+      throw new Error(`No se puede eliminar el release porque está siendo usado en ${clientPlansUsingRelease} plan(es) de cliente`);
+    }
+
     // First delete all hotfixes for this release
     await this.prisma.hotfix.deleteMany({ where: { releaseId: id } });
     return this.prisma.release.delete({ where: { id } });
@@ -88,7 +106,16 @@ export class ReleasesAdminController {
   }
 
   @Delete(":releaseId/hotfixes/:hotfixId")
-  removeHotfix(@Param("releaseId") releaseId: string, @Param("hotfixId") hotfixId: string) {
+  async removeHotfix(@Param("releaseId") releaseId: string, @Param("hotfixId") hotfixId: string) {
+    // Check if hotfix is being used in tasks
+    const tasksUsingHotfix = await this.prisma.tarea.count({
+      where: { hotfixId: hotfixId }
+    });
+
+    if (tasksUsingHotfix > 0) {
+      throw new Error(`No se puede eliminar el hotfix porque está siendo usado en ${tasksUsingHotfix} tarea(s)`);
+    }
+
     return this.prisma.hotfix.delete({ where: { id: hotfixId } });
   }
 }

@@ -19,7 +19,9 @@ services:
       NODE_ENV: development
       PORT: "8080"
       JWT_SECRET: "dev-secret-change-me"
-      DATABASE_URL: "postgresql://app:apppass@db:5432/helpdesk?schema=public"
+      DATABASE_URL: "postgresql://app:apppass@db:5432/helpdesk?schema=public&charset=utf8"
+      LANG: "C.UTF-8"
+      LC_ALL: "C.UTF-8"
     ports:
       - "8080:8080"
     depends_on:

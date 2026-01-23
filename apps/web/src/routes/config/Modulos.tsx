@@ -1,6 +1,6 @@
 import React from "react";
 import "../../styles/collapsible.css";
-import { createModulo, deleteModulo, listModulos } from "../../lib/api";
+import { createModulo, updateModulo, deleteModulo, listModulos } from "../../lib/api";
 
 export default function Modulos() {
   const [items, setItems] = React.useState<any[]>([]);
@@ -9,6 +9,8 @@ export default function Modulos() {
 
   const [form, setForm] = React.useState({ codigo: "", descripcion: "" });
   const [saving, setSaving] = React.useState(false);
+  const [showForm, setShowForm] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -24,13 +26,41 @@ export default function Modulos() {
 
   React.useEffect(() => { load(); }, []);
 
-  async function onCreate(e: React.FormEvent) {
+  function resetForm() {
+    setForm({ codigo: "", descripcion: "" });
+    setEditingId(null);
+    setShowForm(false);
+    setError(null);
+  }
+
+  function startEdit(item: any) {
+    setEditingId(item.id);
+    setForm({ codigo: item.codigo, descripcion: item.descripcion || "" });
+    setShowForm(true);
+    setError(null);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.codigo.trim()) {
+      setError("El código es obligatorio");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await createModulo({ codigo: form.codigo, descripcion: form.descripcion || undefined });
-      setForm({ codigo: "", descripcion: "" });
+      if (editingId) {
+        await updateModulo(editingId, {
+          codigo: form.codigo.trim(),
+          descripcion: form.descripcion.trim() || undefined,
+        });
+      } else {
+        await createModulo({
+          codigo: form.codigo.trim(),
+          descripcion: form.descripcion.trim() || undefined,
+        });
+      }
+      resetForm();
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Error");
@@ -62,26 +92,54 @@ return (
       </button>
     </div>
 
-    <details className="card cardDetails collapsible">
-      <summary className="cardSummary">
-        <div className="h1">Crear módulo</div>
-      </summary>
-      <div className="cardContent">
-        <form className="form" onSubmit={onCreate}>
-          <div className="field">
-            <div className="label">Código</div>
-            <input className="input" value={form.codigo} onChange={(e)=>setForm({...form,codigo:e.target.value})}/>
+    <div className="card" style={{ padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600 }}>Gestión de Módulos</h2>
+        {!showForm && (
+          <button className="btn primary" onClick={() => setShowForm(true)}>
+            + Nuevo
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} style={{ padding: 16, background: "var(--bg-secondary)", borderRadius: 8, marginBottom: 16 }}>
+          {error && (
+            <div style={{ padding: 8, background: "#FEE2E2", color: "#DC2626", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>
+              {error}
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+            <div className="field">
+              <div className="label">Código *</div>
+              <input
+                className="input"
+                value={form.codigo}
+                onChange={(e) => setForm({ ...form, codigo: e.target.value })}
+                placeholder="Ej: RESERVAS"
+              />
+            </div>
+            <div className="field">
+              <div className="label">Descripción</div>
+              <input
+                className="input"
+                value={form.descripcion}
+                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                placeholder="Descripción opcional"
+              />
+            </div>
           </div>
-          <div className="field">
-            <div className="label">Descripción</div>
-            <input className="input" value={form.descripcion} onChange={(e)=>setForm({...form,descripcion:e.target.value})}/>
-          </div>
-          <div className="field full">
-            <button className="btn primary" disabled={saving}>Crear módulo</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" className="btn primary" disabled={saving}>
+              {saving ? "Guardando..." : editingId ? "Guardar" : "Crear"}
+            </button>
+            <button type="button" className="btn" onClick={resetForm} disabled={saving}>
+              Cancelar
+            </button>
           </div>
         </form>
-      </div>
-    </details>
+      )}
+    </div>
 
     <details className="card cardDetails collapsible" open>
       <summary className="cardSummary">
@@ -105,8 +163,19 @@ return (
               <tr key={m.id}>
                 <td>{m.codigo}</td>
                 <td>{m.descripcion ?? "-"}</td>
-                <td style={{ width: 120 }}>
-                  <button className="btn" onClick={() => onDelete(m.id)}>Eliminar</button>
+                <td style={{ width: 180 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => startEdit(m)}>
+                      Editar
+                    </button>
+                    <button
+                      className="btn"
+                      style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
+                      onClick={() => onDelete(m.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

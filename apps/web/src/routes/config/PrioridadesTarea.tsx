@@ -7,6 +7,12 @@ import {
   deletePrioridadTarea,
 } from "../../lib/api";
 
+const COLOR_PALETTE = [
+  "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8",
+  "#F7DC6F", "#BB8FCE", "#85C1E9", "#F8C471", "#82E0AA", "#F1948A", "#85C1E9",
+  "#D7BDE2", "#AED6F1"
+];
+
 export default function PrioridadesTarea() {
   const [items, setItems] = React.useState<PrioridadTarea[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -16,6 +22,7 @@ export default function PrioridadesTarea() {
   const [descripcion, setDescripcion] = React.useState("");
   const [orden, setOrden] = React.useState(0);
   const [porDefecto, setPorDefecto] = React.useState(false);
+  const [color, setColor] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -40,6 +47,7 @@ export default function PrioridadesTarea() {
     setDescripcion("");
     setOrden(0);
     setPorDefecto(false);
+    setColor("");
     setEditingId(null);
     setShowForm(false);
     setError(null);
@@ -51,6 +59,7 @@ export default function PrioridadesTarea() {
     setDescripcion(item.descripcion || "");
     setOrden(item.orden);
     setPorDefecto(item.porDefecto);
+    setColor(item.color || "");
     setShowForm(true);
     setError(null);
   }
@@ -70,6 +79,7 @@ export default function PrioridadesTarea() {
           descripcion: descripcion.trim() || undefined,
           orden,
           porDefecto,
+          color: color.trim() || undefined,
         });
       } else {
         await createPrioridadTarea({
@@ -77,6 +87,7 @@ export default function PrioridadesTarea() {
           descripcion: descripcion.trim() || undefined,
           orden,
           porDefecto,
+          color: color.trim() || undefined,
         });
       }
       resetForm();
@@ -158,6 +169,49 @@ export default function PrioridadesTarea() {
               </div>
             </div>
             <div style={{ marginBottom: 12 }}>
+              <div className="field">
+                <div className="label">Color</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {COLOR_PALETTE.map((paletteColor) => (
+                    <button
+                      key={paletteColor}
+                      type="button"
+                      onClick={() => setColor(paletteColor)}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        border: color === paletteColor ? "2px solid var(--primary)" : "2px solid transparent",
+                        borderRadius: 4,
+                        backgroundColor: paletteColor,
+                        cursor: "pointer",
+                      }}
+                      title={paletteColor}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setColor("")}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      border: color === "" ? "2px solid var(--primary)" : "2px solid var(--muted)",
+                      borderRadius: 4,
+                      backgroundColor: "transparent",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      color: "var(--muted)",
+                    }}
+                    title="Sin color"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input
                   type="checkbox"
@@ -185,22 +239,37 @@ export default function PrioridadesTarea() {
             No hay registros
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 80 }}>Orden</th>
-                <th style={{ width: 150 }}>Codigo</th>
-                <th>Descripcion</th>
-                <th style={{ width: 100 }}>Por Defecto</th>
-                <th style={{ width: 120 }}>Acciones</th>
-              </tr>
-            </thead>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 80 }}>Orden</th>
+                  <th style={{ width: 150 }}>Codigo</th>
+                  <th>Descripcion</th>
+                  <th style={{ width: 80 }}>Color</th>
+                  <th style={{ width: 100 }}>Por Defecto</th>
+                  <th style={{ width: 120 }}>Acciones</th>
+                </tr>
+              </thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id}>
                   <td>{item.orden}</td>
                   <td style={{ fontWeight: 500 }}>{item.codigo}</td>
                   <td>{item.descripcion || "-"}</td>
+                  <td>
+                    {item.color && (
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 4,
+                          backgroundColor: item.color,
+                          border: "1px solid var(--muted)",
+                        }}
+                        title={item.color}
+                      />
+                    )}
+                  </td>
                   <td>
                     {item.porDefecto && (
                       <span style={{ color: "#059669", fontWeight: 500 }}>Si</span>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getDashboardStats, DashboardStats } from "../lib/api";
+import { getDashboardStats, DashboardStats, listPrioridadesTarea, PrioridadTarea } from "../lib/api";
 
 // Colors for charts
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16"];
@@ -97,6 +97,7 @@ function stripHtml(html: string) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [prioridades, setPrioridades] = useState<PrioridadTarea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,8 +109,12 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getDashboardStats();
-      setStats(data);
+      const [statsData, prioridadesData] = await Promise.all([
+        getDashboardStats(),
+        listPrioridadesTarea()
+      ]);
+      setStats(statsData);
+      setPrioridades(prioridadesData);
     } catch (e: any) {
       setError(e?.message || "Error al cargar estadísticas");
     } finally {
@@ -139,6 +144,14 @@ export default function Dashboard() {
   const tipoData = stats.byTipo.map((t) => ({ label: t.tipo.codigo, value: t.count }));
   const clienteData = stats.byCliente.map((c) => ({ label: c.cliente.codigo, value: c.count }));
   const prioridadData = stats.byPrioridad.map((p) => ({ label: p.prioridad.codigo, value: p.count }));
+
+  // Create dynamic color map from prioridades
+  const dynamicPrioridadColors: Record<string, string> = {};
+  prioridades.forEach(p => {
+    if (p.color) {
+      dynamicPrioridadColors[p.codigo] = p.color;
+    }
+  });
 
   return (
     <div style={{ padding: "12px 20px" }}>
@@ -196,7 +209,7 @@ export default function Dashboard() {
           {/* By Prioridad */}
           <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Tareas por Prioridad</div>
-            <MiniBarChart data={prioridadData} colorMap={PRIORIDAD_COLORS} />
+            <MiniBarChart data={prioridadData} colorMap={dynamicPrioridadColors} />
           </div>
 
           {/* By Cliente (Top 10) */}

@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiPropertyOptional, ApiTags } from "@nestjs/swagger";
+import { IsEmail, IsIn, IsOptional, IsString } from "class-validator";
 import * as bcrypt from "bcryptjs";
 import { PrismaService } from "../prisma.service";
 import { JwtAuthGuard } from "../auth/guards";
@@ -10,11 +11,11 @@ import { CrearAgenteDto } from "./dto";
 
 
 class UpdateAgenteDto {
-  nombre?: string;
-  usuario?: string;
-  password?: string;
-  email?: string | null;
-  role?: "ADMIN" | "AGENTE";
+  @ApiPropertyOptional() @IsOptional() @IsString() nombre?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() usuario?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() password?: string;
+  @ApiPropertyOptional({ type: 'string', nullable: true }) @IsOptional() @IsEmail() email?: string | null;
+  @ApiPropertyOptional({ enum: ["ADMIN","AGENTE"] }) @IsOptional() @IsString() @IsIn(["ADMIN","AGENTE"]) role?: "ADMIN" | "AGENTE";
 }
 
 @ApiTags("admin-agentes")

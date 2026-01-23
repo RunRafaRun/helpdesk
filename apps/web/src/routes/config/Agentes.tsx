@@ -1,6 +1,6 @@
 import React from "react";
 import "../../styles/collapsible.css";
-import { createAgente, listAgentes, listRoles, setAgenteRoles } from "../../lib/api";
+import { createAgente, updateAgente, listAgentes, listRoles, setAgenteRoles } from "../../lib/api";
 
 export default function Agentes() {
   const [items, setItems] = React.useState<any[]>([]);
@@ -10,6 +10,8 @@ export default function Agentes() {
 
   const [form, setForm] = React.useState({ nombre: "", usuario: "", password: "", role: "AGENTE", email: "" });
   const [saving, setSaving] = React.useState(false);
+  const [showForm, setShowForm] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   // Role assignment modal state
   const [editingAgente, setEditingAgente] = React.useState<any>(null);
@@ -30,6 +32,26 @@ export default function Agentes() {
   }
 
   React.useEffect(() => { load(); }, []);
+
+  function resetForm() {
+    setForm({ nombre: "", usuario: "", password: "", role: "AGENTE", email: "" });
+    setEditingId(null);
+    setShowForm(false);
+    setError(null);
+  }
+
+  function startEdit(item: any) {
+    setEditingId(item.id);
+    setForm({
+      nombre: item.nombre,
+      usuario: item.usuario,
+      password: "", // Don't populate password for security
+      role: item.role,
+      email: item.email || ""
+    });
+    setShowForm(true);
+    setError(null);
+  }
 
   function openRoleModal(agente: any) {
     setEditingAgente(agente);
@@ -60,19 +82,37 @@ export default function Agentes() {
     );
   }
 
-  async function onCreate(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.nombre.trim() || !form.usuario.trim()) {
+      setError("Nombre y usuario son obligatorios");
+      return;
+    }
+    if (!editingId && !form.password.trim()) {
+      setError("La contraseña es obligatoria para nuevos agentes");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await createAgente({
-        nombre: form.nombre,
-        usuario: form.usuario,
-        password: form.password,
-        role: form.role as any,
-        email: form.email || undefined,
-      });
-      setForm({ nombre: "", usuario: "", password: "", role: "AGENTE", email: "" });
+      if (editingId) {
+        await updateAgente(editingId, {
+          nombre: form.nombre.trim(),
+          usuario: form.usuario.trim(),
+          role: form.role as any,
+          email: form.email.trim() || null,
+          ...(form.password.trim() && { password: form.password.trim() }),
+        });
+      } else {
+        await createAgente({
+          nombre: form.nombre.trim(),
+          usuario: form.usuario.trim(),
+          password: form.password.trim(),
+          role: form.role as any,
+          email: form.email.trim() || undefined,
+        });
+      }
+      resetForm();
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Error");
@@ -107,52 +147,104 @@ return (
       </button>
     </div>
 
-    <details className="card cardDetails collapsible">
-      <summary className="cardSummary">
-        <div className="h1">Crear agente</div>
-      </summary>
-      <div className="cardContent">
-        <form className="form" onSubmit={onCreate}>
-          <div className="field">
-            <div className="label">Nombre</div>
-            <input className="input" value={form.nombre} onChange={(e)=>setForm({...form,nombre:e.target.value})}/>
-          </div>
-          <div className="field">
-            <div className="label">Usuario</div>
-            <input className="input" value={form.usuario} onChange={(e)=>setForm({...form,usuario:e.target.value})}/>
-          </div>
-          <div className="field">
-            <div className="label">Password</div>
-            <input className="input" type="password" value={form.password} onChange={(e)=>setForm({...form,password:e.target.value})}/>
-          </div>
-          <div className="field">
-            <div className="label">Email</div>
-            <input className="input" value={form.email} onChange={(e)=>setForm({...form,email:e.target.value})}/>
-          </div>
-          <div className="field">
-            <div className="label">Rol</div>
-            <select className="input" value={form.role} onChange={(e)=>setForm({...form,role:e.target.value})}>
-              <option value="AGENTE">AGENTE</option>
-              <option value="ADMIN">ADMIN</option>
-            </select>
-          </div>
-          <div className="field full">
-            <button className="btn primary" disabled={saving}>Crear agente</button>
-          </div>
-        </form>
-      </div>
-    </details>
+     <div className="card" style={{ padding: 24 }}>
+       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+         <h2 style={{ fontSize: 18, fontWeight: 600 }}>Gestión de Agentes</h2>
+         {!showForm && (
+           <button className="btn primary" onClick={() => setShowForm(true)}>
+             + Nuevo
+           </button>
+         )}
+       </div>
 
-    <details className="card cardDetails collapsible" open>
-      <summary className="cardSummary">
-        <div>
-          <div className="h1">Lista de agentes</div>
-          <div className="small" style={{ marginTop: 6 }}>{loading ? "Cargando..." : `${items.length} agente(s)`}</div>
-        </div>
-      </summary>
-      <div className="cardContent">
-        {error && <div className="small" style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div>}
-        <table className="table">
+       {showForm && (
+         <form onSubmit={handleSubmit} style={{ padding: 16, background: "var(--bg-secondary)", borderRadius: 8, marginBottom: 16 }}>
+           {error && (
+             <div style={{ padding: 8, background: "#FEE2E2", color: "#DC2626", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>
+               {error}
+             </div>
+           )}
+           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+             <div className="field">
+               <div className="label">Nombre *</div>
+               <input
+                 className="input"
+                 value={form.nombre}
+                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                 placeholder="Nombre completo"
+               />
+             </div>
+             <div className="field">
+               <div className="label">Usuario *</div>
+               <input
+                 className="input"
+                 value={form.usuario}
+                 onChange={(e) => setForm({ ...form, usuario: e.target.value })}
+                 placeholder="usuario123"
+               />
+             </div>
+             <div className="field">
+               <div className="label">Email</div>
+               <input
+                 className="input"
+                 type="email"
+                 value={form.email}
+                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+                 placeholder="usuario@empresa.com"
+               />
+             </div>
+             <div className="field">
+               <div className="label">Rol</div>
+               <select
+                 className="input"
+                 value={form.role}
+                 onChange={(e) => setForm({ ...form, role: e.target.value })}
+               >
+                 <option value="AGENTE">AGENTE</option>
+                 <option value="ADMIN">ADMIN</option>
+               </select>
+             </div>
+           </div>
+           <div className="field" style={{ marginBottom: 12 }}>
+             <div className="label">
+               {editingId ? "Nueva Contraseña (opcional)" : "Contraseña *"}
+             </div>
+             <input
+               className="input"
+               type="password"
+               value={form.password}
+               onChange={(e) => setForm({ ...form, password: e.target.value })}
+               placeholder={editingId ? "Dejar vacío para mantener la actual" : "Contraseña segura"}
+             />
+           </div>
+           <div style={{ display: "flex", gap: 8 }}>
+             <button type="submit" className="btn primary" disabled={saving}>
+               {saving ? "Guardando..." : editingId ? "Guardar" : "Crear"}
+             </button>
+             <button type="button" className="btn" onClick={resetForm} disabled={saving}>
+               Cancelar
+             </button>
+           </div>
+         </form>
+       )}
+     </div>
+
+     <div className="card" style={{ padding: 24 }}>
+       <div style={{ marginBottom: 16 }}>
+         <h2 style={{ fontSize: 18, fontWeight: 600 }}>Lista de Agentes</h2>
+         <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>{loading ? "Cargando..." : `${items.length} agente(s)`}</div>
+       </div>
+       {error && (
+         <div style={{ padding: 8, background: "#FEE2E2", color: "#DC2626", borderRadius: 4, marginBottom: 16, fontSize: 13 }}>
+           {error}
+         </div>
+       )}
+       {loading ? (
+         <div style={{ padding: 24, textAlign: "center", color: "var(--muted)" }}>
+           Cargando agentes...
+         </div>
+       ) : (
+         <table className="table">
           <thead>
             <tr>
               <th>Usuario</th>
@@ -174,16 +266,29 @@ return (
                     : <span style={{ color: "#9CA3AF" }}>Sin roles</span>
                   }
                 </td>
-                <td style={{ width: 200 }}>
-                  <button className="btn" style={{ marginRight: 8 }} onClick={() => openRoleModal(a)}>Roles</button>
-                  <button className="btn" onClick={() => onDelete(a.id)}>Eliminar</button>
-                </td>
+                 <td style={{ width: 250 }}>
+                   <div style={{ display: "flex", gap: 6 }}>
+                     <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => startEdit(a)}>
+                       Editar
+                     </button>
+                     <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => openRoleModal(a)}>
+                       Roles
+                     </button>
+                     <button
+                       className="btn"
+                       style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
+                       onClick={() => onDelete(a.id)}
+                     >
+                       Eliminar
+                     </button>
+                   </div>
+                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </details>
+         </table>
+       )}
+     </div>
 
     {/* Role assignment modal */}
     {editingAgente && (

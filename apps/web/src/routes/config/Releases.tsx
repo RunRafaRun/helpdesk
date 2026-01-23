@@ -2,9 +2,11 @@ import React from "react";
 import "../../styles/collapsible.css";
 import {
   createRelease,
+  updateRelease,
   deleteRelease,
   listReleases,
   createHotfix,
+  updateHotfix,
   deleteHotfix,
   Release,
 } from "../../lib/api";
@@ -16,10 +18,14 @@ export default function Releases() {
 
   const [releaseForm, setReleaseForm] = React.useState({ codigo: "", descripcion: "" });
   const [savingRelease, setSavingRelease] = React.useState(false);
+  const [showReleaseForm, setShowReleaseForm] = React.useState(false);
+  const [editingReleaseId, setEditingReleaseId] = React.useState<string | null>(null);
 
   const [expandedReleaseId, setExpandedReleaseId] = React.useState<string | null>(null);
   const [hotfixForm, setHotfixForm] = React.useState({ codigo: "", descripcion: "" });
   const [savingHotfix, setSavingHotfix] = React.useState(false);
+  const [editingHotfixId, setEditingHotfixId] = React.useState<string | null>(null);
+  const [editingHotfixReleaseId, setEditingHotfixReleaseId] = React.useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -35,13 +41,50 @@ export default function Releases() {
 
   React.useEffect(() => { load(); }, []);
 
-  async function onCreateRelease(e: React.FormEvent) {
+  function resetReleaseForm() {
+    setReleaseForm({ codigo: "", descripcion: "" });
+    setEditingReleaseId(null);
+    setShowReleaseForm(false);
+    setError(null);
+  }
+
+  function startEditRelease(item: Release) {
+    setEditingReleaseId(item.id);
+    setReleaseForm({ codigo: item.codigo, descripcion: item.descripcion || "" });
+    setShowReleaseForm(true);
+    setError(null);
+  }
+
+  function startEditHotfix(releaseId: string, hotfix: any) {
+    setEditingHotfixId(hotfix.id);
+    setEditingHotfixReleaseId(releaseId);
+    setHotfixForm({ codigo: hotfix.codigo, descripcion: hotfix.descripcion || "" });
+    setError(null);
+  }
+
+  function cancelEditHotfix() {
+    setEditingHotfixId(null);
+    setEditingHotfixReleaseId(null);
+    setHotfixForm({ codigo: "", descripcion: "" });
+  }
+
+  async function handleReleaseSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSavingRelease(true);
     setError(null);
     try {
-      await createRelease({ codigo: releaseForm.codigo, descripcion: releaseForm.descripcion || undefined });
-      setReleaseForm({ codigo: "", descripcion: "" });
+      if (editingReleaseId) {
+        await updateRelease(editingReleaseId, {
+          codigo: releaseForm.codigo.trim(),
+          descripcion: releaseForm.descripcion.trim() || undefined,
+        });
+      } else {
+        await createRelease({
+          codigo: releaseForm.codigo.trim(),
+          descripcion: releaseForm.descripcion.trim() || undefined,
+        });
+      }
+      resetReleaseForm();
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Error");
@@ -67,6 +110,24 @@ export default function Releases() {
     try {
       await createHotfix(releaseId, { codigo: hotfixForm.codigo, descripcion: hotfixForm.descripcion || undefined });
       setHotfixForm({ codigo: "", descripcion: "" });
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Error");
+    } finally {
+      setSavingHotfix(false);
+    }
+  }
+
+  async function onUpdateHotfix(e: React.FormEvent, releaseId: string, hotfixId: string) {
+    e.preventDefault();
+    setSavingHotfix(true);
+    setError(null);
+    try {
+      await updateHotfix(releaseId, hotfixId, {
+        codigo: hotfixForm.codigo.trim(),
+        descripcion: hotfixForm.descripcion.trim() || undefined
+      });
+      cancelEditHotfix();
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Error");
@@ -102,36 +163,70 @@ export default function Releases() {
         </button>
       </div>
 
-      <details className="card cardDetails collapsible">
-        <summary className="cardSummary">
-          <div className="h1">Crear release</div>
-        </summary>
-        <div className="cardContent">
-          <form className="form" onSubmit={onCreateRelease}>
-            <div className="field">
-              <div className="label">Código</div>
-              <input className="input" placeholder="Ej: R35" value={releaseForm.codigo} onChange={(e) => setReleaseForm({ ...releaseForm, codigo: e.target.value })} />
+      <div className="card" style={{ padding: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600 }}>Gestión de Releases</h2>
+          {!showReleaseForm && (
+            <button className="btn primary" onClick={() => setShowReleaseForm(true)}>
+              + Nuevo Release
+            </button>
+          )}
+        </div>
+
+        {showReleaseForm && (
+          <form onSubmit={handleReleaseSubmit} style={{ padding: 16, background: "var(--bg-secondary)", borderRadius: 8, marginBottom: 16 }}>
+            {error && (
+              <div style={{ padding: 8, background: "#FEE2E2", color: "#DC2626", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>
+                {error}
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+              <div className="field">
+                <div className="label">Código *</div>
+                <input
+                  className="input"
+                  value={releaseForm.codigo}
+                  onChange={(e) => setReleaseForm({ ...releaseForm, codigo: e.target.value })}
+                  placeholder="Ej: R35"
+                />
+              </div>
+              <div className="field">
+                <div className="label">Descripción</div>
+                <input
+                  className="input"
+                  value={releaseForm.descripcion}
+                  onChange={(e) => setReleaseForm({ ...releaseForm, descripcion: e.target.value })}
+                  placeholder="Descripción opcional"
+                />
+              </div>
             </div>
-            <div className="field">
-              <div className="label">Descripción</div>
-              <input className="input" value={releaseForm.descripcion} onChange={(e) => setReleaseForm({ ...releaseForm, descripcion: e.target.value })} />
-            </div>
-            <div className="field full">
-              <button className="btn primary" disabled={savingRelease}>Crear release</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="submit" className="btn primary" disabled={savingRelease}>
+                {savingRelease ? "Guardando..." : editingReleaseId ? "Guardar" : "Crear"}
+              </button>
+              <button type="button" className="btn" onClick={resetReleaseForm} disabled={savingRelease}>
+                Cancelar
+              </button>
             </div>
           </form>
-        </div>
-      </details>
+        )}
+      </div>
 
-      <details className="card cardDetails collapsible" open>
-        <summary className="cardSummary">
-          <div>
-            <div className="h1">Lista de releases</div>
-            <div className="small" style={{ marginTop: 6 }}>{loading ? "Cargando..." : `${items.length} release(s)`}</div>
+      <div className="card" style={{ padding: 24 }}>
+        <div style={{ marginBottom: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600 }}>Lista de Releases</h2>
+          <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>{loading ? "Cargando..." : `${items.length} release(s)`}</div>
+        </div>
+        {error && (
+          <div style={{ padding: 8, background: "#FEE2E2", color: "#DC2626", borderRadius: 4, marginBottom: 16, fontSize: 13 }}>
+            {error}
           </div>
-        </summary>
-        <div className="cardContent">
-          {error && <div className="small" style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div>}
+        )}
+        {loading ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--muted)" }}>
+            Cargando releases...
+          </div>
+        ) : (
           <table className="table">
             <thead>
               <tr>
@@ -139,7 +234,7 @@ export default function Releases() {
                 <th>Código</th>
                 <th>Descripción</th>
                 <th>Hotfixes</th>
-                <th style={{ width: 100 }}></th>
+                <th style={{ width: 180 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -172,9 +267,20 @@ export default function Releases() {
                     <td><strong>{r.codigo}</strong></td>
                     <td>{r.descripcion ?? "-"}</td>
                     <td>{r.hotfixes.length}</td>
-                    <td>
-                      <button className="btn" onClick={() => onDeleteRelease(r.id)}>Eliminar</button>
-                    </td>
+                     <td style={{ width: 180 }}>
+                       <div style={{ display: "flex", gap: 6 }}>
+                         <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => startEditRelease(r)}>
+                           Editar
+                         </button>
+                         <button
+                           className="btn"
+                           style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
+                           onClick={() => onDeleteRelease(r.id)}
+                         >
+                           Eliminar
+                         </button>
+                       </div>
+                     </td>
                   </tr>
                   {expandedReleaseId === r.id && (
                     <tr>
@@ -189,18 +295,66 @@ export default function Releases() {
                                 <tr>
                                   <th>Código</th>
                                   <th>Descripción</th>
-                                  <th style={{ width: 100 }}></th>
+                                  <th style={{ width: 120 }}></th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {r.hotfixes.map((hf) => (
-                                  <tr key={hf.id}>
-                                    <td>{hf.codigo}</td>
-                                    <td>{hf.descripcion ?? "-"}</td>
-                                    <td>
-                                      <button className="btn" onClick={() => onDeleteHotfix(r.id, hf.id)}>Eliminar</button>
-                                    </td>
-                                  </tr>
+                                  <React.Fragment key={hf.id}>
+                                    {editingHotfixId === hf.id && editingHotfixReleaseId === r.id ? (
+                                      <tr style={{ background: "#F3F4F6" }}>
+                                        <td colSpan={3} style={{ padding: 12 }}>
+                                          <form onSubmit={(e) => onUpdateHotfix(e, r.id, hf.id)} style={{ display: "flex", gap: 12, alignItems: "end" }}>
+                                            <div className="field" style={{ flex: 1 }}>
+                                              <div className="label">Código *</div>
+                                              <input
+                                                className="input"
+                                                value={hotfixForm.codigo}
+                                                onChange={(e) => setHotfixForm({ ...hotfixForm, codigo: e.target.value })}
+                                                style={{ fontSize: "12px" }}
+                                              />
+                                            </div>
+                                            <div className="field" style={{ flex: 2 }}>
+                                              <div className="label">Descripción</div>
+                                              <input
+                                                className="input"
+                                                value={hotfixForm.descripcion}
+                                                onChange={(e) => setHotfixForm({ ...hotfixForm, descripcion: e.target.value })}
+                                                style={{ fontSize: "12px" }}
+                                              />
+                                            </div>
+                                            <div style={{ display: "flex", gap: 6 }}>
+                                              <button type="submit" className="btn primary" disabled={savingHotfix} style={{ padding: "6px 12px", fontSize: 11 }}>
+                                                {savingHotfix ? "Guardando..." : "Guardar"}
+                                              </button>
+                                              <button type="button" className="btn" onClick={cancelEditHotfix} disabled={savingHotfix} style={{ padding: "6px 12px", fontSize: 11 }}>
+                                                Cancelar
+                                              </button>
+                                            </div>
+                                          </form>
+                                        </td>
+                                      </tr>
+                                    ) : (
+                                      <tr>
+                                        <td>{hf.codigo}</td>
+                                        <td>{hf.descripcion ?? "-"}</td>
+                                        <td>
+                                          <div style={{ display: "flex", gap: 6 }}>
+                                            <button className="btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => startEditHotfix(r.id, hf)}>
+                                              Editar
+                                            </button>
+                                            <button
+                                              className="btn"
+                                              style={{ padding: "4px 8px", fontSize: 11, color: "var(--danger)" }}
+                                              onClick={() => onDeleteHotfix(r.id, hf.id)}
+                                            >
+                                              Eliminar
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
                                 ))}
                               </tbody>
                             </table>
@@ -236,8 +390,8 @@ export default function Releases() {
               )}
             </tbody>
           </table>
-        </div>
-      </details>
+        )}
+      </div>
     </div>
   );
 }
