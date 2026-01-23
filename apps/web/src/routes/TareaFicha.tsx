@@ -665,7 +665,7 @@ function CommentEditorModal({
 }: {
   initialContent: string;
   initialType: "RESPUESTA_AGENTE" | "NOTA_INTERNA";
-  onSave: (content: string, type: "RESPUESTA_AGENTE" | "NOTA_INTERNA", notifyAgentIds: string[]) => void;
+   onSave: (content: string, type: "RESPUESTA_AGENTE" | "NOTA_INTERNA") => void;
   onClose: () => void;
   isEditing: boolean;
   tarea: Tarea | null;
@@ -834,7 +834,7 @@ function CommentEditorModal({
           <button className="btn" onClick={onClose}>Cancelar</button>
           <button
             className="btn primary"
-            onClick={() => onSave(content, commentType, selectedNotifyAgents)}
+             onClick={() => onSave(content, commentType)}
             disabled={!content.trim() || content === "<p></p>"}
           >
             {isEditing ? "Guardar" : "Agregar"}
@@ -994,15 +994,14 @@ export default function TareaFicha() {
     }
   }
 
-  async function handleAddComment(content: string, tipo: "RESPUESTA_AGENTE" | "NOTA_INTERNA", notifyAgentIds: string[]) {
+  async function handleAddComment(content: string, tipo: "RESPUESTA_AGENTE" | "NOTA_INTERNA") {
     if (!id || !content.trim()) return;
     setSubmittingComment(true);
     try {
-      const updatedTimeline = await addComentarioTarea(id, {
-        tipo,
-        cuerpo: content.trim(),
-        notifyAgentIds, // Pass agents to notify (for future notification system)
-      });
+       const updatedTimeline = await addComentarioTarea(id, {
+         tipo,
+         cuerpo: content.trim(),
+       });
       setTimeline(updatedTimeline);
       setShowCommentEditor(false);
     } catch (e: any) {

@@ -629,8 +629,11 @@ export async function addComentarioTarea(id: string, input: {
   cuerpo: string;
   canal?: string;
   visibleParaCliente?: boolean;
+  notifyAgentIds?: string[]; // For future notification system (not currently used)
 }) {
-  return request<TareaEvento[]>(`/tareas/${id}/comentarios`, { method: "POST", body: JSON.stringify(input) });
+  // Remove notifyAgentIds before sending to API as it's not expected by the backend yet
+  const { notifyAgentIds, ...apiInput } = input;
+  return request<TareaEvento[]>(`/tareas/${id}/comentarios`, { method: "POST", body: JSON.stringify(apiInput) });
 }
 
 // Lookup endpoints - TipoTarea CRUD
