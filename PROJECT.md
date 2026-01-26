@@ -69,6 +69,7 @@ infra/
   - `rbac.admin.controller.ts` - Role and permission management
   - `configuracion.admin.controller.ts` - Mail configuration
   - `lookup.admin.controller.ts` - Lookup tables (tipos/estados/prioridades)
+  - `plantillas.admin.controller.ts` - Reusable text templates with wildcards
 - **TareasModule**: Full task management with:
   - Auto-generated task number (yyyyNNNNN format, unique per year)
   - Timeline events (comments, status changes, assignments)
@@ -97,6 +98,7 @@ infra/
 | `/config/tipos-tarea` | Task types management with icons |
 | `/config/estados-tarea` | Task states management with icons and suggestions |
 | `/config/prioridades-tarea` | Task priorities management with colors |
+| `/config/plantillas` | Reusable text templates with wildcards |
 | `/config/notificaciones` | Email configuration |
 | `/clientes/:clienteCodigo/ficha` | Client profile view with tabs |
 | `/` (Dashboard) | Statistics dashboard with dynamic priority colors |
@@ -123,6 +125,7 @@ infra/
 | **Release/Hotfix** | Software versions (hotfixes belong to releases) |
 | **NotificacionMasiva** | Mass email notifications with scheduling |
 | **ConfiguracionMail** | Email server configuration (SMTP or Azure OAuth) |
+| **Plantilla** | Reusable text templates with wildcard support |
 
 ### Lookup Tables (TipoTarea, EstadoTarea, PrioridadTarea)
 
@@ -162,6 +165,46 @@ Icons are displayed throughout the UI using the `Icon` component (`apps/web/src/
 - Estado dropdowns show code + emoji icon (e.g., "PENDIENTE ⏰")
 **Priority Display**: Priority badges show color-coded text only (no icons)
 
+#### Plantillas (Templates) System
+
+The application includes a reusable text template system for comments and notifications:
+
+**Plantilla Model Fields**:
+- `codigo` (String, unique) - Template identifier
+- `descripcion` (String, optional) - Description
+- `texto` (Text) - HTML template content (TipTap editor)
+- `categoria` (String, optional) - Category for grouping
+- `orden` (Int) - Sort order within category
+- `activo` (Boolean) - Active/inactive status
+
+**Wildcards (Dynamic Placeholders)**:
+Templates support wildcards that are replaced with actual values at runtime:
+
+| Wildcard | Description |
+|----------|-------------|
+| `{{cliente.codigo}}` | Client code |
+| `{{cliente.descripcion}}` | Client description |
+| `{{cliente.jefeProyecto1}}` | Project manager 1 |
+| `{{cliente.jefeProyecto2}}` | Project manager 2 |
+| `{{tarea.numero}}` | Task number |
+| `{{tarea.titulo}}` | Task title |
+| `{{tarea.estado}}` | Task status code |
+| `{{tarea.prioridad}}` | Task priority code |
+| `{{tarea.modulo}}` | Task module code |
+| `{{agente.nombre}}` | Agent name |
+| `{{agente.email}}` | Agent email |
+| `{{fecha.actual}}` | Current date (DD/MM/YYYY) |
+| `{{fecha.hora}}` | Current time (HH:MM) |
+
+**Frontend Components**:
+- `apps/web/src/lib/wildcards.ts` - Wildcard definitions and resolution utilities
+- `apps/web/src/components/TemplateSelector.tsx` - Reusable dropdown for template selection
+- `apps/web/src/routes/config/Plantillas.tsx` - Template management config page
+
+**Integration Points**:
+- Task comment editor (TareaFicha.tsx) - Insert templates in comments
+- Mass notifications (NotificacionesMasivas.tsx) - Use templates in notification body
+
 ## Authentication & Permissions
 
 - JWT tokens via `/auth/login`
@@ -171,7 +214,7 @@ Icons are displayed throughout the UI using the `Icon` component (`apps/web/src/
 ### Available Permissions (PermisoCodigo enum)
 | Permission | Description |
 |------------|-------------|
-| CONFIG_MAESTROS | Task types, states, priorities management |
+| CONFIG_MAESTROS | Task types, states, priorities, plantillas management |
 | CONFIG_AGENTES | Agent management |
 | CONFIG_CLIENTES | Full client management |
 | CONFIG_CLIENTES_READ | Read-only client access |

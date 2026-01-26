@@ -22,6 +22,7 @@ model Agente {
   password              String
   email                 String?
   role                  AgenteRole             @default(AGENTE)
+  activo                Boolean                @default(true)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   roles                 AgenteRoleAssignment[]
@@ -42,6 +43,7 @@ model Cliente {
   jefeProyecto1  String?                @db.VarChar(50)
   jefeProyecto2  String?                @db.VarChar(50)
   licenciaTipo   LicenciaTipo?
+  activo         Boolean                @default(true)
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
   centrosTrabajo ClienteCentroTrabajo[]
@@ -98,6 +100,7 @@ model TipoTarea {
   descripcion String?
   orden       Int     @default(0)
   porDefecto  Boolean @default(false)
+  activo      Boolean @default(true)
   tareas      Tarea[]
 }
 
@@ -107,6 +110,7 @@ model EstadoTarea {
   descripcion String?
   orden       Int     @default(0)
   porDefecto  Boolean @default(false)
+  activo      Boolean @default(true)
   tareas      Tarea[]
 }
 
@@ -117,6 +121,7 @@ model PrioridadTarea {
   orden       Int     @default(0)
   porDefecto  Boolean @default(false)
   color       String?
+  activo      Boolean @default(true)
   tareas      Tarea[]
 }
 
@@ -131,6 +136,7 @@ model Modulo {
   id               String                 @id @default(uuid()) @db.Uuid
   codigo           String                 @unique @db.VarChar(80)
   descripcion      String?
+  activo           Boolean                @default(true)
   clienteSoftwares ClienteSoftware[]
   tareas           Tarea[]
   clienteUsuarios  ClienteUsuarioModulo[]
@@ -140,6 +146,7 @@ model Release {
   id              String               @id @default(uuid()) @db.Uuid
   codigo          String               @unique @db.VarChar(50)
   descripcion     String?
+  rama            RamaTipo             @default(DESARROLLO)
   clienteReleases ClienteReleasePlan[]
   hotfixes        Hotfix[]
   tareas          Tarea[]
@@ -149,6 +156,7 @@ model Hotfix {
   id              String               @id @default(uuid()) @db.Uuid
   codigo          String               @db.VarChar(50)
   descripcion     String?
+  rama            RamaTipo             @default(DESARROLLO)
   releaseId       String               @db.Uuid
   clienteReleases ClienteReleasePlan[]
   release         Release              @relation(fields: [releaseId], references: [id])
@@ -480,4 +488,21 @@ enum TipoSeguridad {
   TLS
   SSL
   AZURE
+}
+
+enum RamaTipo {
+  DESARROLLO
+  PRODUCCION
+}
+
+model Plantilla {
+  id          String   @id @default(uuid()) @db.Uuid
+  codigo      String   @unique @db.VarChar(50)
+  descripcion String?
+  texto       String   @db.Text
+  categoria   String?  @db.VarChar(50)
+  orden       Int      @default(0)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

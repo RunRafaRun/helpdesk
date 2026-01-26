@@ -12,6 +12,7 @@ import { ReleasesAdminController } from "./releases.admin.controller";
 import { ConfiguracionAdminController, SiteConfigController } from "./configuracion.admin.controller";
 import { NotificacionesAdminController } from "./notificaciones.admin.controller";
 import { LookupAdminController } from "./lookup.admin.controller";
+import { PlantillasAdminController } from "./plantillas.admin.controller";
 
 @Module({
   imports: [PrismaModule, AuthModule, MailModule],
@@ -26,6 +27,7 @@ import { LookupAdminController } from "./lookup.admin.controller";
     SiteConfigController,
     NotificacionesAdminController,
     LookupAdminController,
+    PlantillasAdminController,
   ],
 })
 export class AdminModule {}

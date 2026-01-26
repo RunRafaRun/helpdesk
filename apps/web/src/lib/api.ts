@@ -47,18 +47,25 @@ export async function me(): Promise<Me> {
   }
 }
 
-export type Agente = { id: string; nombre: string; usuario: string; email?: string | null; role: "ADMIN" | "AGENTE"; createdAt: string };
+export type Agente = { id: string; nombre: string; usuario: string; email?: string | null; role: "ADMIN" | "AGENTE"; activo: boolean; createdAt: string };
 
-export async function listAgentes() {
-  return request<Agente[]>("/admin/agentes");
+export async function listAgentes(opts?: { includeInactive?: boolean }) {
+  const qs = opts?.includeInactive ? "?includeInactive=1" : "";
+  return request<Agente[]>(`/admin/agentes${qs}`);
 }
 
-export async function createAgente(input: { nombre: string; usuario: string; password: string; role?: "ADMIN" | "AGENTE"; email?: string }) {
+export async function createAgente(input: { nombre: string; usuario: string; password: string; role?: "ADMIN" | "AGENTE"; email?: string; activo?: boolean }) {
   return request<Agente>("/admin/agentes", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateAgente(id: string, input: { nombre?: string; usuario?: string; password?: string; role?: "ADMIN" | "AGENTE"; email?: string | null }) {
-  return request<Agente>(`/admin/agentes/${id}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateAgente(id: string, input: { nombre?: string; usuario?: string; password?: string; role?: "ADMIN" | "AGENTE"; email?: string | null; activo?: boolean }, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<Agente>(`/admin/agentes/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export async function deleteAgente(id: string, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<void>(`/admin/agentes/${id}${qs}`, { method: "DELETE" });
 }
 
 export type Cliente = {
@@ -69,10 +76,12 @@ export type Cliente = {
   jefeProyecto2?: string | null;
   licenciaTipo?: "AAM" | "PPU" | null;
   currentRelease?: string | null;
+  activo?: boolean;
 };
 
-export async function listClientes() {
-  return request<Cliente[]>("/admin/clientes");
+export async function listClientes(opts?: { includeInactive?: boolean }) {
+  const qs = opts?.includeInactive ? "?includeInactive=1" : "";
+  return request<Cliente[]>(`/admin/clientes${qs}`);
 }
 
 export async function createCliente(input: {
@@ -81,6 +90,7 @@ export async function createCliente(input: {
   jefeProyecto1?: string | null;
   jefeProyecto2?: string | null;
   licenciaTipo?: "AAM" | "PPU" | null;
+  activo?: boolean;
 }) {
   return request<Cliente>("/admin/clientes", { method: "POST", body: JSON.stringify(input) });
 }
@@ -91,8 +101,15 @@ export async function updateCliente(id: string, input: {
   jefeProyecto1?: string | null;
   jefeProyecto2?: string | null;
   licenciaTipo?: "AAM" | "PPU" | null;
-}) {
-  return request<Cliente>(`/admin/clientes/${id}`, { method: "PUT", body: JSON.stringify(input) });
+  activo?: boolean;
+}, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<Cliente>(`/admin/clientes/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export async function deleteCliente(id: string, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<void>(`/admin/clientes/${id}${qs}`, { method: "DELETE" });
 }
 
 export async function createUnidad(clienteId: string, input: { codigo: string; descripcion?: string; scope: "HOTEL" | "CENTRAL" | "TODOS"; activo?: boolean }) {
@@ -203,6 +220,32 @@ export interface DashboardStats {
     codigo: string;
     hotfixes: Array<{ codigo: string }>;
   };
+  releaseStatus?: {
+    desarrolloRelease: {
+      id: string;
+      codigo: string;
+      descripcion?: string | null;
+      rama: RamaTipo;
+    } | null;
+    produccionRelease: {
+      id: string;
+      codigo: string;
+      descripcion?: string | null;
+      rama: RamaTipo;
+      desarrolloHotfix: {
+        id: string;
+        codigo: string;
+        descripcion?: string | null;
+        rama: RamaTipo;
+      } | null;
+      produccionHotfix: {
+        id: string;
+        codigo: string;
+        descripcion?: string | null;
+        rama: RamaTipo;
+      } | null;
+    } | null;
+  };
 }
 
 export async function getDashboardStats() {
@@ -229,22 +272,25 @@ export async function updateSiteConfig(config: Partial<SiteConfig>) {
   });
 }
 
-export type Modulo = { id: string; codigo: string; descripcion?: string | null; createdAt: string };
+export type Modulo = { id: string; codigo: string; descripcion?: string | null; activo: boolean; createdAt: string };
 
-export async function listModulos() {
-  return request<Modulo[]>("/admin/modulos");
+export async function listModulos(opts?: { includeInactive?: boolean }) {
+  const qs = opts?.includeInactive ? "?includeInactive=1" : "";
+  return request<Modulo[]>(`/admin/modulos${qs}`);
 }
 
-export async function createModulo(input: { codigo: string; descripcion?: string }) {
+export async function createModulo(input: { codigo: string; descripcion?: string; activo?: boolean }) {
   return request<Modulo>("/admin/modulos", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateModulo(id: string, input: { codigo?: string; descripcion?: string }) {
-  return request<Modulo>(`/admin/modulos/${id}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateModulo(id: string, input: { codigo?: string; descripcion?: string; activo?: boolean }, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<Modulo>(`/admin/modulos/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export async function deleteModulo(id: string) {
-  return request<void>(`/admin/modulos/${id}`, { method: "DELETE" });
+export async function deleteModulo(id: string, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<void>(`/admin/modulos/${id}${qs}`, { method: "DELETE" });
 }
 
 export async function listRoles() {
@@ -303,10 +349,13 @@ export async function updateUsuarioCliente(clienteId: string, usuarioId: string,
 }
 
 // Releases and Hotfixes
+export type RamaTipo = "DESARROLLO" | "PRODUCCION";
+
 export type Hotfix = {
   id: string;
   codigo: string;
   descripcion?: string | null;
+  rama: RamaTipo;
   releaseId: string;
 };
 
@@ -314,31 +363,43 @@ export type Release = {
   id: string;
   codigo: string;
   descripcion?: string | null;
+  rama: RamaTipo;
   hotfixes: Hotfix[];
 };
+
+export type ReleaseConfirmationResponse = {
+  requiresConfirmation: true;
+  existingDesarrolloRelease?: Release;
+  existingDesarrolloHotfix?: Hotfix;
+  message: string;
+};
+
+export function isReleaseConfirmationResponse(obj: any): obj is ReleaseConfirmationResponse {
+  return obj && obj.requiresConfirmation === true;
+}
 
 export async function listReleases() {
   return request<Release[]>("/admin/releases");
 }
 
-export async function createRelease(input: { codigo: string; descripcion?: string }) {
-  return request<Release>("/admin/releases", { method: "POST", body: JSON.stringify(input) });
+export async function createRelease(input: { codigo: string; descripcion?: string; rama?: RamaTipo; confirmMoveToProduccion?: boolean }) {
+  return request<Release | ReleaseConfirmationResponse>("/admin/releases", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateRelease(id: string, input: { codigo?: string; descripcion?: string }) {
-  return request<Release>(`/admin/releases/${id}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateRelease(id: string, input: { codigo?: string; descripcion?: string; rama?: RamaTipo; confirmMoveToProduccion?: boolean }) {
+  return request<Release | ReleaseConfirmationResponse>(`/admin/releases/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
 export async function deleteRelease(id: string) {
   return request<void>(`/admin/releases/${id}`, { method: "DELETE" });
 }
 
-export async function createHotfix(releaseId: string, input: { codigo: string; descripcion?: string }) {
-  return request<Hotfix>(`/admin/releases/${releaseId}/hotfixes`, { method: "POST", body: JSON.stringify(input) });
+export async function createHotfix(releaseId: string, input: { codigo: string; descripcion?: string; rama?: RamaTipo; confirmMoveToProduccion?: boolean }) {
+  return request<Hotfix | ReleaseConfirmationResponse>(`/admin/releases/${releaseId}/hotfixes`, { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateHotfix(releaseId: string, hotfixId: string, input: { codigo?: string; descripcion?: string }) {
-  return request<Hotfix>(`/admin/releases/${releaseId}/hotfixes/${hotfixId}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateHotfix(releaseId: string, hotfixId: string, input: { codigo?: string; descripcion?: string; rama?: RamaTipo; confirmMoveToProduccion?: boolean }) {
+  return request<Hotfix | ReleaseConfirmationResponse>(`/admin/releases/${releaseId}/hotfixes/${hotfixId}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
 export async function deleteHotfix(releaseId: string, hotfixId: string) {
@@ -479,6 +540,7 @@ export type TipoTarea = {
   descripcion?: string;
   orden: number;
   porDefecto: boolean;
+  activo?: boolean;
 };
 
 export type EstadoTarea = {
@@ -487,6 +549,7 @@ export type EstadoTarea = {
   descripcion?: string;
   orden: number;
   porDefecto: boolean;
+  activo?: boolean;
 };
 
 export type PrioridadTarea = {
@@ -496,6 +559,7 @@ export type PrioridadTarea = {
   orden: number;
   porDefecto: boolean;
   color?: string;
+  activo?: boolean;
 };
 
 export type TareaEvento = {
@@ -637,52 +701,112 @@ export async function addComentarioTarea(id: string, input: {
 }
 
 // Lookup endpoints - TipoTarea CRUD
-export async function listTiposTarea() {
-  return request<TipoTarea[]>("/admin/lookup/tipos-tarea");
+export async function listTiposTarea(opts?: { includeInactive?: boolean }) {
+  const qs = opts?.includeInactive ? "?includeInactive=1" : "";
+  return request<TipoTarea[]>(`/admin/lookup/tipos-tarea${qs}`);
 }
 
-export async function createTipoTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean }) {
+export async function createTipoTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }) {
   return request<TipoTarea>("/admin/lookup/tipos-tarea", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateTipoTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean }) {
-  return request<TipoTarea>(`/admin/lookup/tipos-tarea/${id}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateTipoTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<TipoTarea>(`/admin/lookup/tipos-tarea/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export async function deleteTipoTarea(id: string) {
-  return request<void>(`/admin/lookup/tipos-tarea/${id}`, { method: "DELETE" });
+export async function deleteTipoTarea(id: string, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<void>(`/admin/lookup/tipos-tarea/${id}${qs}`, { method: "DELETE" });
 }
 
 // Lookup endpoints - EstadoTarea CRUD
-export async function listEstadosTarea() {
-  return request<EstadoTarea[]>("/admin/lookup/estados-tarea");
+export async function listEstadosTarea(opts?: { includeInactive?: boolean }) {
+  const qs = opts?.includeInactive ? "?includeInactive=1" : "";
+  return request<EstadoTarea[]>(`/admin/lookup/estados-tarea${qs}`);
 }
 
-export async function createEstadoTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean }) {
+export async function createEstadoTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }) {
   return request<EstadoTarea>("/admin/lookup/estados-tarea", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateEstadoTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean }) {
-  return request<EstadoTarea>(`/admin/lookup/estados-tarea/${id}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateEstadoTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<EstadoTarea>(`/admin/lookup/estados-tarea/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export async function deleteEstadoTarea(id: string) {
-  return request<void>(`/admin/lookup/estados-tarea/${id}`, { method: "DELETE" });
+export async function deleteEstadoTarea(id: string, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<void>(`/admin/lookup/estados-tarea/${id}${qs}`, { method: "DELETE" });
 }
 
 // Lookup endpoints - PrioridadTarea CRUD
-export async function listPrioridadesTarea() {
-  return request<PrioridadTarea[]>("/admin/lookup/prioridades-tarea");
+export async function listPrioridadesTarea(opts?: { includeInactive?: boolean }) {
+  const qs = opts?.includeInactive ? "?includeInactive=1" : "";
+  return request<PrioridadTarea[]>(`/admin/lookup/prioridades-tarea${qs}`);
 }
 
-export async function createPrioridadTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; color?: string }) {
+export async function createPrioridadTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; color?: string; activo?: boolean }) {
   return request<PrioridadTarea>("/admin/lookup/prioridades-tarea", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updatePrioridadTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; color?: string }) {
-  return request<PrioridadTarea>(`/admin/lookup/prioridades-tarea/${id}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updatePrioridadTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; color?: string; activo?: boolean }, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<PrioridadTarea>(`/admin/lookup/prioridades-tarea/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export async function deletePrioridadTarea(id: string) {
-  return request<void>(`/admin/lookup/prioridades-tarea/${id}`, { method: "DELETE" });
+export async function deletePrioridadTarea(id: string, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<void>(`/admin/lookup/prioridades-tarea/${id}${qs}`, { method: "DELETE" });
+}
+
+// Plantillas (Templates)
+export type Plantilla = {
+  id: string;
+  codigo: string;
+  descripcion?: string | null;
+  texto: string;
+  categoria?: string | null;
+  orden: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function listPlantillas(opts?: { includeInactive?: boolean; categoria?: string }) {
+  const params = new URLSearchParams();
+  if (opts?.includeInactive) params.set("includeInactive", "1");
+  if (opts?.categoria) params.set("categoria", opts.categoria);
+  const qs = params.toString();
+  return request<Plantilla[]>(`/admin/plantillas${qs ? `?${qs}` : ""}`);
+}
+
+export async function getPlantilla(id: string) {
+  return request<Plantilla>(`/admin/plantillas/${id}`);
+}
+
+export async function createPlantilla(input: {
+  codigo: string;
+  descripcion?: string;
+  texto: string;
+  categoria?: string;
+  orden?: number;
+  activo?: boolean;
+}) {
+  return request<Plantilla>("/admin/plantillas", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function updatePlantilla(id: string, input: {
+  codigo?: string;
+  descripcion?: string;
+  texto?: string;
+  categoria?: string;
+  orden?: number;
+  activo?: boolean;
+}) {
+  return request<Plantilla>(`/admin/plantillas/${id}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export async function deletePlantilla(id: string) {
+  return request<void>(`/admin/plantillas/${id}`, { method: "DELETE" });
 }

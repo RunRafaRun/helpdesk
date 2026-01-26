@@ -9,6 +9,9 @@ import {
   Adjunto,
 } from "../lib/api";
 import TipTapEditor from "../components/TipTapEditor";
+import TemplateSelector from "../components/TemplateSelector";
+import { WildcardContext } from "../lib/wildcards";
+import { useAuth } from "../lib/auth";
 
 // Convert UTC date to local datetime-local input format (YYYY-MM-DDTHH:mm)
 function toLocalDatetimeString(date: Date): string {
@@ -245,6 +248,7 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({ notif
 };
 
 export default function NotificacionesMasivas() {
+  const { me } = useAuth();
   const [clientes, setClientes] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [historial, setHistorial] = useState<NotificacionMasiva[]>([]);
@@ -253,6 +257,25 @@ export default function NotificacionesMasivas() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<NotificacionMasiva | null>(null);
+
+  // Context for template wildcards (limited context for notifications)
+  const wildcardContext: WildcardContext = React.useMemo(() => ({
+    agente: me ? {
+      nombre: me.usuario,
+      email: null,
+    } : null,
+    cliente: null,
+    tarea: null,
+  }), [me]);
+
+  // Handle template selection
+  function handleTemplateSelect(resolvedHtml: string) {
+    if (!cuerpoHtml || cuerpoHtml === "<p></p>") {
+      setCuerpoHtml(resolvedHtml);
+    } else {
+      setCuerpoHtml(cuerpoHtml + resolvedHtml);
+    }
+  }
 
   // Form state
   const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
@@ -649,9 +672,17 @@ export default function NotificacionesMasivas() {
 
             {/* Cuerpo (WYSIWYG) */}
             <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", fontSize: "14px", fontWeight: 500, marginBottom: "8px" }}>
-                Cuerpo del mensaje
-              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <label style={{ fontSize: "14px", fontWeight: 500 }}>
+                  Cuerpo del mensaje
+                </label>
+                <TemplateSelector
+                  context={wildcardContext}
+                  onSelect={handleTemplateSelect}
+                  buttonLabel="Usar Plantilla"
+                  buttonStyle={{ padding: "6px 12px", fontSize: 12 }}
+                />
+              </div>
               <TipTapEditor content={cuerpoHtml} onChange={setCuerpoHtml} />
             </div>
 

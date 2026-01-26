@@ -1,7 +1,10 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TipTapEditor from "../components/TipTapEditor";
+import TemplateSelector from "../components/TemplateSelector";
 import { Icon } from "../components/Icon";
+import { WildcardContext } from "../lib/wildcards";
+import { useAuth } from "../lib/auth";
 import {
   getTarea,
   getTareaTimeline,
@@ -70,14 +73,15 @@ function Badge({ codigo, label, colorMap, prioridad, estado }: {
   label?: string;
   colorMap?: Record<string, { bg: string; text: string }>;
   prioridad?: { codigo: string; color?: string };
-  estado?: { codigo: string }
+  estado?: { codigo: string };
 }) {
+  const resolvedCodigo = codigo ?? estado?.codigo;
   // Use priority color if available, otherwise fall back to colorMap
   let colors;
   if (prioridad?.color) {
     colors = { bg: prioridad.color, text: "#FFFFFF" }; // White text on colored background
   } else if (colorMap) {
-    colors = colorMap[codigo ?? ""] ?? { bg: "#E5E7EB", text: "#4B5563" };
+    colors = colorMap[resolvedCodigo ?? ""] ?? { bg: "#E5E7EB", text: "#4B5563" };
   } else {
     colors = { bg: "#E5E7EB", text: "#4B5563" };
   }
@@ -97,7 +101,7 @@ function Badge({ codigo, label, colorMap, prioridad, estado }: {
         whiteSpace: "nowrap",
       }}
     >
-      {prioridad?.codigo ?? label ?? codigo ?? "-"}
+      {prioridad?.codigo ?? label ?? resolvedCodigo ?? "-"}
     </span>
   );
 }
@@ -662,6 +666,7 @@ function CommentEditorModal({
   tarea,
   agentes,
   timeline,
+  currentAgente,
 }: {
   initialContent: string;
   initialType: "RESPUESTA_AGENTE" | "NOTA_INTERNA";
@@ -671,10 +676,43 @@ function CommentEditorModal({
   tarea: Tarea | null;
   agentes: Agente[];
   timeline: TareaEvento[];
+  currentAgente?: Agente | null;
 }) {
   const [content, setContent] = React.useState(initialContent);
   const [commentType, setCommentType] = React.useState(initialType);
   const [selectedNotifyAgents, setSelectedNotifyAgents] = React.useState<string[]>([]);
+
+  // Build wildcard context for template resolution
+  const wildcardContext: WildcardContext = React.useMemo(() => ({
+    cliente: tarea?.cliente ? {
+      codigo: tarea.cliente.codigo,
+      descripcion: tarea.cliente.descripcion,
+      jefeProyecto1: tarea.cliente.jefeProyecto1,
+      jefeProyecto2: tarea.cliente.jefeProyecto2,
+    } : null,
+    tarea: tarea ? {
+      numero: tarea.numero,
+      titulo: tarea.titulo,
+      estado: tarea.estado,
+      prioridad: tarea.prioridad,
+      modulo: tarea.modulo,
+    } : null,
+    agente: currentAgente ? {
+      nombre: currentAgente.nombre,
+      email: currentAgente.email,
+    } : null,
+  }), [tarea, currentAgente]);
+
+  // Handle template selection
+  function handleTemplateSelect(resolvedHtml: string) {
+    // If content is empty or just a paragraph, replace it
+    if (!content || content === "<p></p>") {
+      setContent(resolvedHtml);
+    } else {
+      // Append to existing content
+      setContent(content + resolvedHtml);
+    }
+  }
 
   // Get involved agents (Jefe Proyecto 1, Jefe Proyecto 2, assigned, agents from previous comments)
   const involvedAgents = React.useMemo(() => {
@@ -729,25 +767,33 @@ function CommentEditorModal({
           {/* Main content area */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ display: "flex", gap: 20 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-                  <input
-                    type="radio"
-                    name="commentType"
-                    checked={commentType === "RESPUESTA_AGENTE"}
-                    onChange={() => setCommentType("RESPUESTA_AGENTE")}
-                  />
-                  <span>Respuesta al cliente</span>
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-                  <input
-                    type="radio"
-                    name="commentType"
-                    checked={commentType === "NOTA_INTERNA"}
-                    onChange={() => setCommentType("NOTA_INTERNA")}
-                  />
-                  <span>Nota interna</span>
-                </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 20 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                    <input
+                      type="radio"
+                      name="commentType"
+                      checked={commentType === "RESPUESTA_AGENTE"}
+                      onChange={() => setCommentType("RESPUESTA_AGENTE")}
+                    />
+                    <span>Respuesta al cliente</span>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                    <input
+                      type="radio"
+                      name="commentType"
+                      checked={commentType === "NOTA_INTERNA"}
+                      onChange={() => setCommentType("NOTA_INTERNA")}
+                    />
+                    <span>Nota interna</span>
+                  </label>
+                </div>
+                <TemplateSelector
+                  context={wildcardContext}
+                  onSelect={handleTemplateSelect}
+                  buttonLabel="Usar Plantilla"
+                  buttonStyle={{ padding: "6px 12px", fontSize: 12 }}
+                />
               </div>
             </div>
 
@@ -848,6 +894,7 @@ function CommentEditorModal({
 export default function TareaFicha() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { me } = useAuth();
 
   const [tarea, setTarea] = React.useState<Tarea | null>(null);
   const [timeline, setTimeline] = React.useState<TareaEvento[]>([]);
@@ -874,8 +921,8 @@ export default function TareaFicha() {
   // Cliente popup
   const [showClientePopup, setShowClientePopup] = React.useState(false);
 
-  // Task info panel collapsed state
-  const [infoExpanded, setInfoExpanded] = React.useState(false);
+  // Task info panel collapsed state (true = sidebar visible)
+  const [infoExpanded, setInfoExpanded] = React.useState(true);
 
    // Comments
    const [selectedComment, setSelectedComment] = React.useState<TareaEvento | null>(null);
@@ -1027,10 +1074,63 @@ export default function TareaFicha() {
   const availableHotfixes = selectedRelease?.hotfixes || [];
   const isClosed = !!tarea?.closedAt;
 
+  // Find current agente from the logged-in user
+  const currentAgente = React.useMemo(() => {
+    if (!me) return null;
+    return agentes.find(a => a.usuario === me.usuario) || null;
+  }, [me, agentes]);
+
+  function normalizeTipo(tipo?: string) {
+    return (tipo || "").trim().toUpperCase().replace(/\s+/g, "_");
+  }
+
+  function isClientEvent(evento: TareaEvento) {
+    return normalizeTipo(evento.tipo) == "MENSAJE_CLIENTE" || evento.actorTipo == "CLIENTE";
+  }
+
+  function isAgentEvent(evento: TareaEvento) {
+    return normalizeTipo(evento.tipo) == "RESPUESTA_AGENTE" || evento.actorTipo == "AGENTE";
+  }
+
   // Filter comments (MENSAJE_CLIENTE, RESPUESTA_AGENTE, NOTA_INTERNA)
   const comments = timeline.filter((e) =>
-    ["MENSAJE_CLIENTE", "RESPUESTA_AGENTE", "NOTA_INTERNA"].includes(e.tipo)
+    ["MENSAJE_CLIENTE", "RESPUESTA_AGENTE", "NOTA_INTERNA"].includes(normalizeTipo(e.tipo))
   );
+
+  const chronologicalOrder = [...comments].reverse();
+  const chronologicalNumbers = new Map<string, number>();
+  chronologicalOrder.forEach((evento, index) => {
+    chronologicalNumbers.set(evento.id, index + 1);
+  });
+
+  const chronologicalRelationships = new Map<string, string>();
+  let lastClientIndex = -1;
+  for (let i = 0; i < chronologicalOrder.length; i++) {
+    const evento = chronologicalOrder[i];
+    if (isClientEvent(evento)) {
+      lastClientIndex = i;
+      continue;
+    }
+    if (isAgentEvent(evento)) {
+      if (lastClientIndex !== -1) {
+        chronologicalRelationships.set(evento.id, `#${lastClientIndex + 1}`);
+      }
+    }
+  }
+
+  function resolveRelatedTo(eventoId: string): string {
+    const direct = chronologicalRelationships.get(eventoId);
+    if (direct) return direct;
+    const idx = chronologicalOrder.findIndex((e) => e.id === eventoId);
+    if (idx === -1) return "";
+    for (let i = idx - 1; i >= 0; i--) {
+      if (isClientEvent(chronologicalOrder[i])) return `#${i + 1}`;
+    }
+    for (let i = idx + 1; i < chronologicalOrder.length; i++) {
+      if (isClientEvent(chronologicalOrder[i])) return `#${i + 1}`;
+    }
+    return "";
+  }
 
   if (loading) {
     return (
@@ -1052,384 +1152,146 @@ export default function TareaFicha() {
   }
 
   return (
-    <div className="grid">
-      {/* Header */}
-      <div className="topbar">
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button className="btn" onClick={() => navigate("/")}>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 80px)", gap: 0 }}>
+      {/* Compact Header Bar */}
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center", 
+        padding: "8px 16px",
+        borderBottom: "1px solid var(--border)",
+        background: "var(--card-bg)",
+        flexShrink: 0
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button className="btn" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => navigate("/")}>
             ← Volver
           </button>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>
-                #{tarea.numero}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 700, color: "var(--accent)" }}>
+              #{tarea.numero}
+            </span>
+            <span style={{ color: "var(--muted)", fontSize: 12 }}>—</span>
+            <span style={{ fontSize: 14, fontWeight: 500, maxWidth: 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {tarea.titulo}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 8 }}>
+            <Badge estado={tarea.estado} />
+            <Badge prioridad={tarea.prioridad} />
+            {isClosed && (
+              <span style={{ padding: "3px 8px", backgroundColor: "#374151", color: "#fff", borderRadius: "4px", fontSize: "11px", fontWeight: 600 }}>
+                CERRADA
               </span>
-               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                 <span style={{ fontSize: 12, color: "var(--muted)" }}>Estado:</span>
-                 <Badge estado={tarea.estado} />
-               </div>
-              <Badge prioridad={tarea.prioridad} />
-              {isClosed && (
-                <span style={{ padding: "4px 10px", backgroundColor: "#374151", color: "#fff", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
-                  CERRADA
-                </span>
-              )}
-            </div>
-            <div className="h1" style={{ marginTop: 4 }}>{tarea.titulo}</div>
+            )}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 6 }}>
           {!isClosed && (
             <>
-               <button className="btn" onClick={() => setEditing(!editing)}>
-                 {editing ? "Cancelar" : "Editar"}
-               </button>
-               <button className="btn primary" onClick={handleClose}>
-                 Cerrar Tarea
-               </button>
+              <button className="btn" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setEditing(!editing)}>
+                {editing ? "Cancelar" : "Editar"}
+              </button>
+              <button className="btn primary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={handleClose}>
+                Cerrar Tarea
+              </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Collapsible Task Info Panel */}
-      <div className="card" style={{ padding: 0 }}>
-        {/* Summary row (always visible) */}
-        <div
-          style={{
+      {/* Main Content: 3-column layout (left sidebar for future use, center for articles, right for task info) */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        
+        {/* Center: Articles/Comments Area */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid var(--border)" }}>
+          
+          {/* Article Overview - Compact list like OTRS */}
+          <div style={{ 
+            flexShrink: 0, 
+            borderBottom: "1px solid var(--border)", 
+            background: "var(--card-bg)",
+            maxHeight: "35%",
+            minHeight: 140,
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "8px 16px",
-            cursor: "pointer",
-            background: infoExpanded ? "var(--bg-secondary)" : "transparent",
-          }}
-          onClick={() => setInfoExpanded(!infoExpanded)}
-        >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center", fontSize: 13 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span className="label">Cliente:</span>
-              <strong>{tarea.cliente?.codigo}</strong>
-              <button
-                className="btn"
-                style={{ padding: "2px 5px", fontSize: 10, marginLeft: 2, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                onClick={(e) => { e.stopPropagation(); setShowClientePopup(true); }}
-                title="Ver ficha del cliente"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-              </button>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span className="label">U.C.:</span>
-              <span>{tarea.unidadComercial?.codigo ?? "-"}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span className="label">Módulo:</span>
-              <span>{tarea.modulo?.codigo ?? "-"}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span className="label">Asignado:</span>
-              <span style={{ fontWeight: tarea.asignadoA ? 500 : 400, color: tarea.asignadoA ? "var(--text)" : "var(--muted)" }}>
-                {tarea.asignadoA?.nombre ?? "Sin asignar"}
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span className="label">Release:</span>
-              <span>{tarea.release?.codigo ?? "-"}{tarea.hotfix ? ` / ${tarea.hotfix.codigo}` : ""}</span>
-            </div>
-          </div>
-          <button
-            className="btn"
-            style={{ padding: "4px 10px", fontSize: 11 }}
-            onClick={(e) => { e.stopPropagation(); setInfoExpanded(!infoExpanded); }}
-          >
-            {infoExpanded ? "▲ Ocultar" : "▼ Ver más"}
-          </button>
-        </div>
-
-        {/* Expanded details (editing or viewing) */}
-        {infoExpanded && (
-          <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)" }}>
-            {editing ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Título</div>
-                  <input
-                    className="input"
-                    style={{ padding: "4px 8px", fontSize: 13 }}
-                    value={editForm.titulo}
-                    onChange={(e) => setEditForm({ ...editForm, titulo: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Estado</div>
-                  <select
-                    className="input"
-                    style={{ padding: "4px 8px", fontSize: 13 }}
-                    value={editForm.estadoId || ""}
-                    onChange={(e) => setEditForm({ ...editForm, estadoId: e.target.value })}
-                  >
-                    <option value="">Sin estado</option>
-                    {estados.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.codigo}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Prioridad</div>
-                  <select
-                    className="input"
-                    style={{ padding: "4px 8px", fontSize: 13 }}
-                    value={editForm.prioridadId || ""}
-                    onChange={(e) => setEditForm({ ...editForm, prioridadId: e.target.value })}
-                  >
-                    {prioridades.map((p) => (
-                      <option key={p.id} value={p.id}>{p.codigo}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Tipo</div>
-                  <select
-                    className="input"
-                    style={{ padding: "4px 8px", fontSize: 13 }}
-                    value={editForm.tipoId || ""}
-                    onChange={(e) => setEditForm({ ...editForm, tipoId: e.target.value })}
-                  >
-                    {tipos.map((t) => (
-                      <option key={t.id} value={t.id}>{t.codigo}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Módulo</div>
-                  <select
-                    className="input"
-                    style={{ padding: "4px 8px", fontSize: 13 }}
-                    value={editForm.moduloId || ""}
-                    onChange={(e) => setEditForm({ ...editForm, moduloId: e.target.value })}
-                  >
-                    <option value="">Sin módulo</option>
-                    {modulos.map((m) => (
-                      <option key={m.id} value={m.id}>{m.codigo}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Release</div>
-                  <select
-                    className="input"
-                    style={{ padding: "4px 8px", fontSize: 13 }}
-                    value={editForm.releaseId || ""}
-                    onChange={(e) => setEditForm({ ...editForm, releaseId: e.target.value, hotfixId: "" })}
-                  >
-                    <option value="">Sin release</option>
-                    {releases.map((r) => (
-                      <option key={r.id} value={r.id}>{r.codigo}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <div className="label" style={{ marginBottom: 2, fontSize: 11 }}>Hotfix</div>
-                  <select
-                    className="input"
-                    style={{ padding: "4px 8px", fontSize: 13 }}
-                    value={editForm.hotfixId || ""}
-                    onChange={(e) => setEditForm({ ...editForm, hotfixId: e.target.value })}
-                    disabled={!editForm.releaseId}
-                  >
-                    <option value="">Sin hotfix</option>
-                    {availableHotfixes.map((h) => (
-                      <option key={h.id} value={h.id}>{h.codigo}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field" style={{ marginBottom: 0, display: "flex", alignItems: "flex-end" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-                    <input
-                      type="checkbox"
-                      checked={editForm.reproducido}
-                      onChange={(e) => setEditForm({ ...editForm, reproducido: e.target.checked })}
-                    />
-                    <span>Reproducido</span>
-                  </label>
-                </div>
-                <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, marginTop: 6 }}>
-                  <button className="btn primary" style={{ padding: "4px 12px", fontSize: 12 }} onClick={handleSave} disabled={saving}>
-                    {saving ? "Guardando..." : "Guardar"}
-                  </button>
-                  <button className="btn" style={{ padding: "4px 12px", fontSize: 12 }} onClick={() => setEditing(false)}>
-                    Cancelar
-                  </button>
-                </div>
+            flexDirection: "column"
+          }}>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", 
+              padding: "8px 12px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--bg-secondary)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Artículos - {comments.length} Artículo(s)</span>
+                <button
+                  style={{ 
+                    background: "none", 
+                    border: "none", 
+                    cursor: "pointer", 
+                    padding: "2px 6px",
+                    fontSize: 11,
+                    color: "var(--muted)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                  onClick={() => setCommentsOrderAsc(!commentsOrderAsc)}
+                  title="Cambiar orden"
+                >
+                  {commentsOrderAsc ? "▲ Antiguos primero" : "▼ Recientes primero"}
+                </button>
               </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "8px 16px", fontSize: 12 }}>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Número:</div>
-                  <div style={{ fontFamily: "monospace", fontWeight: 600, lineHeight: 1.3 }}>{tarea.numero}</div>
+              {!isClosed && (
+                <button className="btn primary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setShowCommentEditor(true)}>
+                  + Nota
+                </button>
+              )}
+            </div>
+            
+            {/* Compact article list */}
+            <div style={{ flex: 1, overflow: "auto" }}>
+              {comments.length === 0 ? (
+                <div style={{ textAlign: "center", color: "var(--muted)", padding: 16, fontSize: 12 }}>
+                  No hay artículos
                 </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Cliente:</div>
-                  <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }} title={`${tarea.cliente?.codigo} - ${tarea.cliente?.descripcion || ""}`}>
-                    {tarea.cliente?.codigo} {tarea.cliente?.descripcion && `- ${tarea.cliente.descripcion}`}
-                  </div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>U. Comercial:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.unidadComercial?.codigo ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Estado:</div>
-                  <div style={{ lineHeight: 1.3 }}><Badge estado={tarea.estado} /></div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Tipo:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.tipo?.codigo ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Prioridad:</div>
-                  <div style={{ lineHeight: 1.3 }}><Badge prioridad={tarea.prioridad} /></div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Módulo:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.modulo?.codigo ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Release:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.release?.codigo ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Hotfix:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.hotfix?.codigo ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Asignado a:</div>
-                  <div style={{ fontWeight: tarea.asignadoA ? 500 : 400, color: tarea.asignadoA ? "var(--text)" : "var(--muted)", lineHeight: 1.3 }}>
-                    {tarea.asignadoA?.nombre ?? "Sin asignar"}
-                  </div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Jefe Proy. 1:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.cliente?.jefeProyecto1 ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Jefe Proy. 2:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.cliente?.jefeProyecto2 ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Reproducido:</div>
-                  <div style={{ lineHeight: 1.3 }}>{tarea.reproducido ? "Sí" : "No"}</div>
-                </div>
-                <div>
-                  <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Creada:</div>
-                  <div style={{ lineHeight: 1.3 }}>{formatDate(tarea.createdAt)}</div>
-                </div>
-                {tarea.closedAt && (
-                  <div>
-                    <div className="label" style={{ fontSize: 10, marginBottom: 2, color: "var(--muted)" }}>Cerrada:</div>
-                    <div style={{ lineHeight: 1.3 }}>{formatDate(tarea.closedAt)}</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Comments section - Full width */}
-      <div className="card" style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div className="h2">Comentarios ({comments.length})</div>
-            {!isClosed && (
-              <button className="btn primary" onClick={() => setShowCommentEditor(true)}>
-                + Nuevo Comentario
-              </button>
-            )}
-          </div>
-
-          {/* Comments list */}
-          <div style={{ flex: 1, minHeight: 200, maxHeight: 300, overflow: "auto", borderBottom: "1px solid var(--border)", marginBottom: 16 }}>
-            {comments.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#6B7280", padding: 24 }}>
-                No hay comentarios
-              </div>
-            ) : (
-              <table className="table" style={{ fontSize: 13 }}>
-                <thead>
-                    <tr>
-                      <th
-                        style={{
-                          width: 40,
-                          cursor: "pointer",
-                          userSelect: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4
-                        }}
-                        onClick={() => setCommentsOrderAsc(!commentsOrderAsc)}
-                        title="Cambiar orden"
-                      >
-                        #
-                        <span style={{
-                          fontSize: 10,
-                          transform: commentsOrderAsc ? "rotate(180deg)" : "rotate(0deg)",
-                          transition: "transform 0.2s"
-                        }}>
-                          ▲
-                        </span>
-                      </th>
-                      <th style={{ width: 120 }}>Fecha/Hora</th>
-                      <th style={{ width: 100 }}>Tipo</th>
-                      <th>Relacionado</th>
-                      <th>Descripción</th>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-secondary)" }}>
+                      <th style={{ padding: "6px 8px", textAlign: "center", width: 35, fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>N°</th>
+                      <th style={{ padding: "6px 8px", textAlign: "left", width: 110, fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>REMITENTE</th>
+                      <th style={{ padding: "6px 8px", textAlign: "left", width: 65, fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>VIA</th>
+                      <th style={{ padding: "6px 8px", textAlign: "left", width: 70, fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>REL.</th>
+                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>ASUNTO</th>
+                      <th style={{ padding: "6px 8px", textAlign: "left", width: 150, fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>CREADO</th>
                     </tr>
-                 </thead>
+                  </thead>
                   <tbody>
                     {(() => {
-                      // Always number chronologically (oldest = #1)
-                      const chronologicalOrder = [...comments].reverse(); // API gives newest first, so reverse for chronological
-
-                      // Build relationship mapping based on chronological order
-                      const chronologicalRelationships = new Map<string, string>();
-
-                      for (let i = 0; i < chronologicalOrder.length; i++) {
-                        const evento = chronologicalOrder[i];
-                        if (evento.tipo === "RESPUESTA_AGENTE") {
-                          // Check if next chronological event is MENSAJE_CLIENTE
-                          const nextEvent = i < chronologicalOrder.length - 1 ? chronologicalOrder[i + 1] : null;
-                          if (nextEvent?.tipo === "MENSAJE_CLIENTE") {
-                            chronologicalRelationships.set(evento.id, `#${i + 2}`); // Reference chronological number
-                          }
-                        }
-                      }
-
-                      // Create chronological number mapping for each event
-                      const chronologicalNumbers = new Map<string, number>();
-                      chronologicalOrder.forEach((evento, index) => {
-                        chronologicalNumbers.set(evento.id, index + 1);
-                      });
-
-                      // Sort comments for display based on user preference
                       const displayComments = commentsOrderAsc
-                        ? [...comments].reverse() // ASC: oldest first
-                        : [...comments]; // DESC: newest first (default)
+                        ? [...comments].reverse()
+                        : [...comments];
 
                       return displayComments.map((evento) => {
-                        const colors = EVENTO_COLORS[evento.tipo] ?? EVENTO_COLORS.SISTEMA;
                         const isSelected = selectedComment?.id === evento.id;
-
-                        // Always show chronological number (#1 = oldest)
                         const chronologicalNumber = chronologicalNumbers.get(evento.id) || 0;
-
-                        // Get chronological relationship
-                        const relatedTo = chronologicalRelationships.get(evento.id) || "";
+                        const agente = agentes.find(a => a.id === evento.creadoPorAgenteId);
+                        const senderName = isClientEvent(evento) 
+                          ? (tarea.cliente?.codigo || "Cliente")
+                          : (agente?.nombre || "Agente");
+                        const viaLabel = isClientEvent(evento) 
+                          ? "Cliente" 
+                          : normalizeTipo(evento.tipo) === "NOTA_INTERNA" 
+                            ? "Interno" 
+                            : "Agente";
+                        const isClientRow = isClientEvent(evento);
+                        const isAgentRow = !isClientRow && viaLabel === "Agente";
+                        const relatedTo = !isClientRow ? resolveRelatedTo(evento.id) : "";
+                        const relDebug = relatedTo ? `Resp ${relatedTo}` : "-";
+                        const subjectPreview = evento.cuerpo?.replace(/<[^>]*>/g, "").substring(0, 80) || "Sin contenido";
 
                         return (
                           <tr
@@ -1439,121 +1301,517 @@ export default function TareaFicha() {
                               cursor: "pointer",
                               backgroundColor: isSelected ? "var(--accent)" : "transparent",
                               color: isSelected ? "#fff" : "var(--text)",
+                              fontWeight: isSelected ? 600 : 400,
                             }}
                           >
-                            <td style={{ textAlign: "center", fontWeight: 600, color: "var(--muted)" }}>
+                            <td style={{ padding: "5px 8px", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
                               {chronologicalNumber}
                             </td>
-                            <td>
-                              {formatDate(evento.createdAt)}
+                            <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 110 }}>
+                              {senderName}
                             </td>
-                            <td>
-                              <span style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                padding: "2px 6px",
-                                borderRadius: 4,
-                                background: isSelected ? "rgba(255,255,255,0.2)" : colors.bg,
-                                fontSize: 11,
+                            <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>
+                              <span style={{ 
+                                fontSize: 10, 
+                                fontWeight: 600,
+                                color: isSelected ? "#fff" : (evento.tipo === "MENSAJE_CLIENTE" ? "#D97706" : evento.tipo === "NOTA_INTERNA" ? "#6B7280" : "#2563EB")
                               }}>
-                                {colors.icon} {evento.tipo === "MENSAJE_CLIENTE" ? "Cliente" : evento.tipo === "RESPUESTA_AGENTE" ? "Agente" : "Interno"}
+                                {viaLabel}
                               </span>
                             </td>
-                            <td style={{ textAlign: "center", fontWeight: 600, color: relatedTo ? "var(--accent)" : "var(--muted)" }}>
-                              {relatedTo || "-"}
+                            <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>
+                              <span style={{
+                                fontSize: 10,
+                                fontWeight: 600,
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                background: isSelected ? "rgba(255,255,255,0.2)" : "var(--bg-secondary)",
+                                color: isSelected ? "#fff" : isAgentRow ? "var(--accent)" : "var(--muted)",
+                                whiteSpace: "nowrap",
+                              }}>
+                                {relDebug}
+                              </span>
                             </td>
-                            <td style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {evento.cuerpo?.replace(/<[^>]*>/g, "").substring(0, 60)}...
+                            <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {subjectPreview}
                             </td>
-                        </tr>
-                      );
+                            <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", fontSize: 10 }}>
+                              {formatDate(evento.createdAt)}
+                            </td>
+                          </tr>
+                        );
                       });
                     })()}
-                </tbody>
-              </table>
-            )}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
 
-          {/* Selected comment detail */}
-          <div style={{ flex: 1, minHeight: 150, overflow: "auto" }}>
-            <div className="label" style={{ marginBottom: 8 }}>Detalle del comentario seleccionado</div>
+          {/* Selected Article Detail - Takes maximum space */}
+          <div style={{ 
+            flex: 1, 
+            overflow: "auto", 
+            background: "#fff",
+            display: "flex",
+            flexDirection: "column"
+          }}>
             {selectedComment ? (
-              <div style={{
-                padding: 16,
-                backgroundColor: EVENTO_COLORS[selectedComment.tipo]?.bg ?? "#F3F4F6",
-                border: `1px solid ${EVENTO_COLORS[selectedComment.tipo]?.border ?? "#D1D5DB"}`,
-                borderRadius: 8,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                      {EVENTO_COLORS[selectedComment.tipo]?.icon} {selectedComment.tipo.replace(/_/g, " ")}
-                      {!selectedComment.visibleParaCliente && (
-                        <span style={{ fontSize: 10, padding: "2px 6px", backgroundColor: "#374151", color: "#fff", borderRadius: 4, marginLeft: 8 }}>
-                          Interno
+              <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                {/* Article header - collapsible info */}
+                <div style={{ 
+                  padding: "10px 16px", 
+                  borderBottom: "1px solid var(--border)",
+                  background: "var(--bg-secondary)",
+                  flexShrink: 0
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span>#{(() => {
+                          const idx = chronologicalOrder.findIndex(c => c.id === selectedComment.id);
+                          return idx >= 0 ? idx + 1 : "?";
+                        })()} — {selectedComment.tipo === "MENSAJE_CLIENTE" ? "Mensaje Cliente" : selectedComment.tipo === "NOTA_INTERNA" ? "Nota Interna" : "Respuesta Agente"}</span>
+                        <span style={{ color: "var(--muted)", fontWeight: 400 }}>— {formatDate(selectedComment.createdAt)}</span>
+                        {resolveRelatedTo(selectedComment.id) && (
+                          <span style={{
+                            fontSize: 10,
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            background: "var(--bg-secondary)",
+                            color: "var(--accent)",
+                          }}>
+                            Relacionado con {resolveRelatedTo(selectedComment.id)}
+                          </span>
+                        )}
+                        {selectedComment.tipo === "NOTA_INTERNA" && (
+                          <span style={{ fontSize: 10, padding: "2px 6px", backgroundColor: "#374151", color: "#fff", borderRadius: 4 }}>
+                            Interno
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", gap: 16 }}>
+                        <span>
+                          <strong>De:</strong> {selectedComment.tipo === "MENSAJE_CLIENTE" 
+                            ? (tarea.cliente?.codigo || "Cliente")
+                            : (agentes.find(a => a.id === selectedComment.creadoPorAgenteId)?.nombre || "Agente")}
                         </span>
+                        {selectedComment.tipo !== "NOTA_INTERNA" && (
+                          <span>
+                            <strong>Para:</strong> {selectedComment.tipo === "MENSAJE_CLIENTE" ? "Soporte" : tarea.cliente?.codigo || "Cliente"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {!isClosed && selectedComment.tipo !== "MENSAJE_CLIENTE" && (
+                        <>
+                          <button className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>Editar</button>
+                          <button className="btn" style={{ padding: "4px 10px", fontSize: 11, color: "var(--danger)" }}>Eliminar</button>
+                        </>
+                      )}
+                      {!isClosed && (
+                        <button className="btn primary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setShowCommentEditor(true)}>
+                          Responder
+                        </button>
                       )}
                     </div>
-                    <div className="small">{formatDate(selectedComment.createdAt)}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {!isClosed && selectedComment.tipo !== "MENSAJE_CLIENTE" && (
-                      <>
-                        <button className="btn" style={{ padding: "4px 8px", fontSize: 11 }}>Editar</button>
-                        <button className="btn" style={{ padding: "4px 8px", fontSize: 11, color: "var(--danger)" }}>Eliminar</button>
-                      </>
-                    )}
-                    {!isClosed && (
-                      <button className="btn primary" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setShowCommentEditor(true)}>
-                        Responder
-                      </button>
-                    )}
                   </div>
                 </div>
-                <div
-                  className="comment-content"
-                  style={{ fontSize: 14, lineHeight: 1.6, overflow: "hidden", wordWrap: "break-word", overflowWrap: "break-word" }}
-                  dangerouslySetInnerHTML={{ __html: selectedComment.cuerpo ?? "" }}
-                />
-                 <style>{`
-                   .comment-content img {
-                     max-width: 100%;
-                     height: auto;
-                     display: block;
-                   }
-                   .comment-content * {
-                     max-width: 100%;
-                   }
-                 `}</style>
 
-                 {/* Notifications section */}
-                 <div style={{ marginTop: 16, padding: "12px", backgroundColor: "var(--bg-secondary)", borderRadius: 6, border: "1px solid var(--border)" }}>
-                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>
-                     NOTIFICACIONES ENVIADAS
-                   </div>
-                   <div style={{ fontSize: 12, color: "var(--text)" }}>
-                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                       <span style={{ color: "var(--muted)" }}>👥</span>
-                       <span>Agentes: Ninguno</span>
-                     </div>
-                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                       <span style={{ color: "var(--muted)" }}>👤</span>
-                       <span>Usuarios del cliente: Ninguno</span>
-                     </div>
-                     <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
-                       Sistema de notificaciones próximamente disponible
-                     </div>
-                   </div>
-                 </div>
+                {/* Article body - maximum space for content */}
+                <div style={{ 
+                  flex: 1, 
+                  padding: "16px 20px", 
+                  overflow: "auto",
+                  fontSize: 14,
+                  lineHeight: 1.7
+                }}>
+                  {/* Author avatar/initials */}
+                  <div style={{ display: "flex", gap: 16 }}>
+                    <div style={{ 
+                      width: 40, 
+                      height: 40, 
+                      borderRadius: 4, 
+                      background: selectedComment.tipo === "MENSAJE_CLIENTE" ? "#FEF3C7" : "#DBEAFE",
+                      color: selectedComment.tipo === "MENSAJE_CLIENTE" ? "#92400E" : "#1E40AF",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      flexShrink: 0
+                    }}>
+                      {(() => {
+                        const name = selectedComment.tipo === "MENSAJE_CLIENTE" 
+                          ? (tarea.cliente?.codigo || "CL")
+                          : (agentes.find(a => a.id === selectedComment.creadoPorAgenteId)?.nombre || "AG");
+                        return name.substring(0, 2).toUpperCase();
+                      })()}
+                    </div>
+                    <div style={{ flex: 1, borderLeft: "3px solid var(--border)", paddingLeft: 16 }}>
+                      <div
+                        className="comment-content"
+                        style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
+                        dangerouslySetInnerHTML={{ __html: selectedComment.cuerpo ?? "" }}
+                      />
+                    </div>
+                  </div>
+                  <style>{`
+                    .comment-content img {
+                      max-width: 100%;
+                      height: auto;
+                      display: block;
+                      margin: 8px 0;
+                      border: 1px solid var(--border);
+                      border-radius: 4px;
+                    }
+                    .comment-content * {
+                      max-width: 100%;
+                    }
+                    .comment-content table {
+                      border-collapse: collapse;
+                      margin: 8px 0;
+                    }
+                    .comment-content td, .comment-content th {
+                      border: 1px solid var(--border);
+                      padding: 4px 8px;
+                    }
+                    .comment-content pre, .comment-content code {
+                      background: var(--bg-secondary);
+                      padding: 2px 6px;
+                      border-radius: 4px;
+                      font-size: 13px;
+                    }
+                    .comment-content pre {
+                      padding: 12px;
+                      overflow-x: auto;
+                    }
+                  `}</style>
+                </div>
               </div>
             ) : (
-              <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", border: "1px dashed var(--border)", borderRadius: 8 }}>
-                Selecciona un comentario de la lista para ver el detalle
+              <div style={{ 
+                flex: 1, 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                color: "var(--muted)",
+                fontSize: 13
+              }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+                  <div>Selecciona un artículo de la lista para ver su contenido</div>
+                </div>
               </div>
             )}
           </div>
         </div>
+
+        {/* Right Sidebar: Task Information (collapsible) */}
+        <div style={{ 
+          width: infoExpanded ? 280 : 0, 
+          overflow: "hidden",
+          transition: "width 0.2s ease",
+          background: "var(--bg-secondary)",
+          borderLeft: infoExpanded ? "1px solid var(--border)" : "none",
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          {infoExpanded && (
+            <div style={{ width: 280, height: "100%", overflow: "auto", fontSize: 12 }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                padding: "6px 8px",
+                background: "var(--card-bg)",
+                borderBottom: "1px solid var(--border)"
+              }}>
+                <button
+                  onClick={() => setInfoExpanded(false)}
+                  title="Ocultar panel"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    padding: "2px 6px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    color: "var(--muted)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  ◀
+                </button>
+              </div>
+              {/* Ticket Info Section */}
+              <div style={{ borderBottom: "1px solid var(--border)" }}>
+                <div 
+                  style={{ 
+                    padding: "10px 12px", 
+                    background: "var(--card-bg)", 
+                    fontWeight: 600, 
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: "pointer"
+                  }}
+                >
+                  ▼ Información del ticket
+                </div>
+                <div style={{ padding: "8px 12px", background: "var(--card-bg)" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: "6px 8px" }}>
+                    <span style={{ color: "var(--muted)" }}>Tipo:</span>
+                    <span style={{ fontWeight: 500 }}>{tarea.tipo?.codigo ?? "-"}</span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Creado:</span>
+                    <span>{formatDate(tarea.createdAt)}</span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Estado:</span>
+                    <span><Badge estado={tarea.estado} /></span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Prioridad:</span>
+                    <span><Badge prioridad={tarea.prioridad} /></span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Propietario:</span>
+                    <span style={{ fontWeight: 500, color: tarea.asignadoA ? "var(--text)" : "var(--muted)" }}>
+                      {tarea.asignadoA?.nombre ?? "Sin asignar"}
+                    </span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Módulo:</span>
+                    <span>{tarea.modulo?.codigo ?? "-"}</span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Release:</span>
+                    <span style={{ color: tarea.release ? "var(--accent)" : "var(--muted)" }}>
+                      {tarea.release?.codigo ?? "N/A"}
+                    </span>
+                    
+                    <span style={{ color: "var(--muted)" }}>HotFix:</span>
+                    <span style={{ color: tarea.hotfix ? "var(--accent)" : "var(--muted)" }}>
+                      {tarea.hotfix?.codigo ?? "N/A"}
+                    </span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Reproducido:</span>
+                    <span>{tarea.reproducido ? "Sí" : "No"}</span>
+                    
+                    {tarea.closedAt && (
+                      <>
+                        <span style={{ color: "var(--muted)" }}>Cerrada:</span>
+                        <span>{formatDate(tarea.closedAt)}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Info Section */}
+              <div style={{ borderBottom: "1px solid var(--border)" }}>
+                <div 
+                  style={{ 
+                    padding: "10px 12px", 
+                    background: "var(--card-bg)", 
+                    fontWeight: 600, 
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: "pointer"
+                  }}
+                >
+                  ▼ Información del cliente
+                </div>
+                <div style={{ padding: "8px 12px", background: "var(--card-bg)" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: "6px 8px" }}>
+                    <span style={{ color: "var(--muted)" }}>Código:</span>
+                    <span style={{ fontWeight: 600, color: "var(--accent)" }}>
+                      {tarea.cliente?.codigo}
+                      <button
+                        className="btn"
+                        style={{ padding: "1px 4px", fontSize: 9, marginLeft: 4 }}
+                        onClick={() => setShowClientePopup(true)}
+                        title="Ver ficha del cliente"
+                      >
+                        🔍
+                      </button>
+                    </span>
+                    
+                    <span style={{ color: "var(--muted)" }}>Descripción:</span>
+                    <span style={{ wordBreak: "break-word" }}>{tarea.cliente?.descripcion || "-"}</span>
+                    
+                    <span style={{ color: "var(--muted)" }}>U.C.:</span>
+                    <span>{tarea.unidadComercial?.codigo ?? "-"}</span>
+                    
+                    <span style={{ color: "var(--muted)" }}>JP 1:</span>
+                    <span>{tarea.cliente?.jefeProyecto1 ?? "-"}</span>
+                    
+                    <span style={{ color: "var(--muted)" }}>JP 2:</span>
+                    <span>{tarea.cliente?.jefeProyecto2 ?? "-"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Mode (when editing) */}
+              {editing && (
+                <div style={{ borderBottom: "1px solid var(--border)" }}>
+                  <div 
+                    style={{ 
+                      padding: "10px 12px", 
+                      background: "#FEF3C7", 
+                      fontWeight: 600, 
+                      fontSize: 11,
+                      color: "#92400E"
+                    }}
+                  >
+                    ✏️ Modo edición
+                  </div>
+                  <div style={{ padding: "8px 12px", background: "var(--card-bg)" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Título</div>
+                        <input
+                          className="input"
+                          style={{ padding: "4px 6px", fontSize: 11 }}
+                          value={editForm.titulo}
+                          onChange={(e) => setEditForm({ ...editForm, titulo: e.target.value })}
+                        />
+                      </div>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Estado</div>
+                        <select
+                          className="input"
+                          style={{ padding: "4px 6px", fontSize: 11 }}
+                          value={editForm.estadoId || ""}
+                          onChange={(e) => setEditForm({ ...editForm, estadoId: e.target.value })}
+                        >
+                          <option value="">Sin estado</option>
+                          {estados.map((e) => (
+                            <option key={e.id} value={e.id}>{e.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Prioridad</div>
+                        <select
+                          className="input"
+                          style={{ padding: "4px 6px", fontSize: 11 }}
+                          value={editForm.prioridadId || ""}
+                          onChange={(e) => setEditForm({ ...editForm, prioridadId: e.target.value })}
+                        >
+                          {prioridades.map((p) => (
+                            <option key={p.id} value={p.id}>{p.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Tipo</div>
+                        <select
+                          className="input"
+                          style={{ padding: "4px 6px", fontSize: 11 }}
+                          value={editForm.tipoId || ""}
+                          onChange={(e) => setEditForm({ ...editForm, tipoId: e.target.value })}
+                        >
+                          {tipos.map((t) => (
+                            <option key={t.id} value={t.id}>{t.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Módulo</div>
+                        <select
+                          className="input"
+                          style={{ padding: "4px 6px", fontSize: 11 }}
+                          value={editForm.moduloId || ""}
+                          onChange={(e) => setEditForm({ ...editForm, moduloId: e.target.value })}
+                        >
+                          <option value="">Sin módulo</option>
+                          {modulos.map((m) => (
+                            <option key={m.id} value={m.id}>{m.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Release</div>
+                        <select
+                          className="input"
+                          style={{ padding: "4px 6px", fontSize: 11 }}
+                          value={editForm.releaseId || ""}
+                          onChange={(e) => setEditForm({ ...editForm, releaseId: e.target.value, hotfixId: "" })}
+                        >
+                          <option value="">Sin release</option>
+                          {releases.map((r) => (
+                            <option key={r.id} value={r.id}>{r.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Hotfix</div>
+                        <select
+                          className="input"
+                          style={{ padding: "4px 6px", fontSize: 11 }}
+                          value={editForm.hotfixId || ""}
+                          onChange={(e) => setEditForm({ ...editForm, hotfixId: e.target.value })}
+                          disabled={!editForm.releaseId}
+                        >
+                          <option value="">Sin hotfix</option>
+                          {availableHotfixes.map((h) => (
+                            <option key={h.id} value={h.id}>{h.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 11 }}>
+                        <input
+                          type="checkbox"
+                          checked={editForm.reproducido}
+                          onChange={(e) => setEditForm({ ...editForm, reproducido: e.target.checked })}
+                        />
+                        <span>Reproducido</span>
+                      </label>
+                      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                        <button className="btn primary" style={{ flex: 1, padding: "4px 8px", fontSize: 11 }} onClick={handleSave} disabled={saving}>
+                          {saving ? "..." : "Guardar"}
+                        </button>
+                        <button className="btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setEditing(false)}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {!infoExpanded && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 10,
+            }}
+          >
+            <button
+              onClick={() => setInfoExpanded(true)}
+              title="Mostrar panel"
+              style={{
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border)",
+                borderRight: "none",
+                padding: "6px 4px",
+                fontSize: 11,
+                borderRadius: "6px 0 0 6px",
+                color: "var(--muted)",
+              }}
+            >
+              ▶
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Modals */}
       {showAssignModal && (
@@ -1589,18 +1847,19 @@ export default function TareaFicha() {
         <ClientePopup clienteId={tarea.clienteId} onClose={() => setShowClientePopup(false)} />
       )}
 
-       {showCommentEditor && (
-         <CommentEditorModal
-           initialContent=""
-           initialType="RESPUESTA_AGENTE"
-           onSave={handleAddComment}
-           onClose={() => setShowCommentEditor(false)}
-           isEditing={false}
-           tarea={tarea}
-           agentes={agentes}
-           timeline={timeline}
-         />
-       )}
+      {showCommentEditor && (
+        <CommentEditorModal
+          initialContent=""
+          initialType="RESPUESTA_AGENTE"
+          onSave={handleAddComment}
+          onClose={() => setShowCommentEditor(false)}
+          isEditing={false}
+          tarea={tarea}
+          agentes={agentes}
+          timeline={timeline}
+          currentAgente={currentAgente}
+        />
+      )}
     </div>
   );
 }

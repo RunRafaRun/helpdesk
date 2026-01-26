@@ -95,6 +95,7 @@ export default function Shell() {
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/tipos-tarea" onClick={closeAllMenus}>Tipos Tarea</NavLink>}
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/estados-tarea" onClick={closeAllMenus}>Estados Tarea</NavLink>}
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/prioridades-tarea" onClick={closeAllMenus}>Prioridades Tarea</NavLink>}
+                  {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/plantillas" onClick={closeAllMenus}>Plantillas</NavLink>}
                   {hasPerm("CONFIG_NOTIFICACIONES") && <NavLink to="/config/notificaciones" onClick={closeAllMenus}>Configuración Notificaciones</NavLink>}
                 </div>
               )}

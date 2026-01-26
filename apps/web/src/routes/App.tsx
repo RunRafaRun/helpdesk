@@ -17,6 +17,7 @@ import Roles from "./config/Roles";
 import TiposTarea from "./config/TiposTarea";
 import EstadosTarea from "./config/EstadosTarea";
 import PrioridadesTarea from "./config/PrioridadesTarea";
+import Plantillas from "./config/Plantillas";
 import Configuracion from "./config/Configuracion";
 import General from "./config/General";
 import NotificacionesMasivas from "./NotificacionesMasivas";
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="config/tipos-tarea" element={<TiposTarea />} />
         <Route path="config/estados-tarea" element={<EstadosTarea />} />
         <Route path="config/prioridades-tarea" element={<PrioridadesTarea />} />
+        <Route path="config/plantillas" element={<Plantillas />} />
         <Route path="config/notificaciones" element={<Configuracion />} />
         <Route path="notificaciones" element={<NotificacionesMasivas />} />
         <Route path="clientes/:clienteCodigo/ficha" element={<ClienteFichaView />} />
