@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service";
 import { CrearComentarioDto, CrearTareaDto, ListarTareasDto, ActualizarTareaDto, AsignarTareaDto } from "./dto";
-import { ActorTipo, EventoTipo, Prisma } from "@prisma/client";
+import { ActorTipo, EventoTipo, Prisma, RamaTipo } from "@prisma/client";
 
 @Injectable()
 export class TareasService {
@@ -526,6 +526,32 @@ export class TareasService {
       include: { hotfixes: { orderBy: { codigo: "desc" }, take: 1 } },
     });
 
+    // Release status info - Desarrollo release (the one devs are working on)
+    const desarrolloRelease = await this.prisma.release.findFirst({
+      where: { rama: RamaTipo.DESARROLLO },
+      orderBy: { codigo: "desc" },
+      include: { hotfixes: { orderBy: { codigo: "desc" } } },
+    });
+
+    // Producción release (the latest one clients are using)
+    const produccionRelease = await this.prisma.release.findFirst({
+      where: { rama: RamaTipo.PRODUCCION },
+      orderBy: { codigo: "desc" },
+      include: {
+        hotfixes: {
+          orderBy: { codigo: "desc" },
+        }
+      },
+    });
+
+    // Get desarrollo and produccion hotfixes for the produccion release
+    let desarrolloHotfix: { id: string; codigo: string; descripcion: string | null; releaseId: string; rama: RamaTipo } | null = null;
+    let produccionHotfix: { id: string; codigo: string; descripcion: string | null; releaseId: string; rama: RamaTipo } | null = null;
+    if (produccionRelease) {
+      desarrolloHotfix = produccionRelease.hotfixes.find(h => h.rama === RamaTipo.DESARROLLO) ?? null;
+      produccionHotfix = produccionRelease.hotfixes.find(h => h.rama === RamaTipo.PRODUCCION) ?? null;
+    }
+
     return {
       totals: {
         abiertas: totalAbiertas,
@@ -539,6 +565,32 @@ export class TareasService {
       latestComments,
       nextReleases,
       latestRelease,
+      releaseStatus: {
+        desarrolloRelease: desarrolloRelease ? {
+          id: desarrolloRelease.id,
+          codigo: desarrolloRelease.codigo,
+          descripcion: desarrolloRelease.descripcion,
+          rama: desarrolloRelease.rama,
+        } : null,
+        produccionRelease: produccionRelease ? {
+          id: produccionRelease.id,
+          codigo: produccionRelease.codigo,
+          descripcion: produccionRelease.descripcion,
+          rama: produccionRelease.rama,
+          desarrolloHotfix: desarrolloHotfix ? {
+            id: desarrolloHotfix.id,
+            codigo: desarrolloHotfix.codigo,
+            descripcion: desarrolloHotfix.descripcion,
+            rama: desarrolloHotfix.rama,
+          } : null,
+          produccionHotfix: produccionHotfix ? {
+            id: produccionHotfix.id,
+            codigo: produccionHotfix.codigo,
+            descripcion: produccionHotfix.descripcion,
+            rama: produccionHotfix.rama,
+          } : null,
+        } : null,
+      },
     };
   }
 }
