@@ -931,3 +931,145 @@ export async function resetDashboardConfig() {
     method: "PUT",
   });
 }
+
+// ==================== NOTIFICATION LOG ====================
+
+export type EstadoNotificacion = "PENDIENTE" | "PROCESANDO" | "ENVIADO" | "ERROR" | "CANCELADO";
+
+export type NotificacionLog = {
+  id: string;
+  tareaId: string;
+  eventoId?: string | null;
+  eventoTipo: string;
+  tipoNotificacion: string;
+  emailsTo: string[];
+  emailsCc: string[];
+  asunto: string;
+  cuerpoHtml: string;
+  cuerpoTexto?: string | null;
+  estado: EstadoNotificacion;
+  prioridad: number;
+  retryCount: number;
+  maxRetries: number;
+  nextRetryAt?: string | null;
+  logEnvio?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  enviadoAt?: string | null;
+  tarea?: {
+    id: string;
+    numero: string;
+    titulo: string;
+    cliente?: { codigo: string };
+  };
+  evento?: {
+    id: string;
+    tipo: string;
+    cuerpo?: string | null;
+    createdAt: string;
+    creadoPorAgente?: { nombre: string };
+    creadoPorCliente?: { nombre: string };
+  };
+};
+
+export type NotificacionLogListResponse = {
+  items: NotificacionLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type NotificacionLogStats = {
+  pendiente: number;
+  procesando: number;
+  enviadoHoy: number;
+  errorHoy: number;
+  total: number;
+};
+
+export type ListNotificacionLogParams = {
+  estado?: EstadoNotificacion;
+  eventoTipo?: string;
+  tareaId?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export async function listNotificacionLogs(params: ListNotificacionLogParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.estado) qs.set("estado", params.estado);
+  if (params.eventoTipo) qs.set("eventoTipo", params.eventoTipo);
+  if (params.tareaId) qs.set("tareaId", params.tareaId);
+  if (params.fechaDesde) qs.set("fechaDesde", params.fechaDesde);
+  if (params.fechaHasta) qs.set("fechaHasta", params.fechaHasta);
+  if (params.search) qs.set("search", params.search);
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  const query = qs.toString();
+  return request<NotificacionLogListResponse>(`/admin/log-notificaciones${query ? `?${query}` : ""}`);
+}
+
+export async function getNotificacionLog(id: string) {
+  return request<NotificacionLog>(`/admin/log-notificaciones/${id}`);
+}
+
+export async function getNotificacionLogStats() {
+  return request<NotificacionLogStats>("/admin/log-notificaciones/stats");
+}
+
+export async function retryNotificacion(id: string) {
+  return request<{ success: boolean; notificacion: NotificacionLog }>(`/admin/log-notificaciones/${id}/retry`, {
+    method: "PUT",
+  });
+}
+
+export async function cancelNotificacion(id: string) {
+  return request<{ success: boolean; notificacion: NotificacionLog }>(`/admin/log-notificaciones/${id}/cancel`, {
+    method: "PUT",
+  });
+}
+
+export async function processNotificacionQueue() {
+  return request<{ success: boolean; processed: number; successCount: number; failed: number }>("/admin/log-notificaciones/process", {
+    method: "POST",
+  });
+}
+
+// ==================== NOTIFICATION CONFIG ====================
+
+export type NotificacionConfig = {
+  id: string | null;
+  eventoTipo: string;
+  habilitado: boolean;
+  notificarCliente: boolean;
+  notificarAgente: boolean;
+  plantillaId?: string | null;
+  plantilla?: { id: string; codigo: string; descripcion?: string | null } | null;
+  asuntoDefault?: string | null;
+  descripcionEvento: string;
+};
+
+export async function listNotificacionConfigs() {
+  return request<NotificacionConfig[]>("/admin/notificacion-config");
+}
+
+export async function getNotificacionConfig(eventoTipo: string) {
+  return request<NotificacionConfig>(`/admin/notificacion-config/${eventoTipo}`);
+}
+
+export async function updateNotificacionConfig(eventoTipo: string, input: {
+  habilitado?: boolean;
+  notificarCliente?: boolean;
+  notificarAgente?: boolean;
+  plantillaId?: string | null;
+  asuntoDefault?: string;
+}) {
+  return request<NotificacionConfig>(`/admin/notificacion-config/${eventoTipo}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}

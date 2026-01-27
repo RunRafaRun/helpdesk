@@ -7,6 +7,7 @@ import { HealthModule } from "./health/health.module";
 import { TareasModule } from "./tareas/tareas.module";
 import { ClienteFichaModule } from './cliente-ficha/cliente-ficha.module';
 import { MailModule } from "./mail/mail.module";
+import { NotificacionesModule } from "./notificaciones/notificaciones.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MailModule } from "./mail/mail.module";
     TareasModule,
     ClienteFichaModule,
     MailModule,
+    NotificacionesModule,
   ],
 })
 export class AppModule {}

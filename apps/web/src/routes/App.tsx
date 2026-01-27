@@ -21,6 +21,7 @@ import Plantillas from "./config/Plantillas";
 import Configuracion from "./config/Configuracion";
 import General from "./config/General";
 import NotificacionesMasivas from "./NotificacionesMasivas";
+import LogNotificaciones from "./config/LogNotificaciones";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { me, loading } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="config/prioridades-tarea" element={<PrioridadesTarea />} />
         <Route path="config/plantillas" element={<Plantillas />} />
         <Route path="config/notificaciones" element={<Configuracion />} />
+        <Route path="config/log-notificaciones" element={<LogNotificaciones />} />
         <Route path="notificaciones" element={<NotificacionesMasivas />} />
         <Route path="clientes/:clienteCodigo/ficha" element={<ClienteFichaView />} />
       </Route>

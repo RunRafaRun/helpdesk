@@ -7,12 +7,12 @@ datasource db {
 }
 
 model SiteConfig {
-  id             String   @id @default(uuid()) @db.Uuid
-  key            String   @unique @db.VarChar(100)
-  value          String?  @db.Text
-  description    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       String?  @db.Text
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Agente {
@@ -166,40 +166,41 @@ model Hotfix {
 }
 
 model Tarea {
-  id                 String          @id @default(uuid()) @db.Uuid
-  numero             String          @unique @db.VarChar(15)
+  id                 String              @id @default(uuid()) @db.Uuid
+  numero             String              @unique @db.VarChar(15)
   titulo             String
-  clienteId          String          @db.Uuid
-  unidadComercialId  String          @db.Uuid
-  tipoId             String          @db.Uuid
-  estadoId           String?         @db.Uuid
-  prioridadId        String          @db.Uuid
-  moduloId           String?         @db.Uuid
-  releaseId          String?         @db.Uuid
-  hotfixId           String?         @db.Uuid
-  reproducido        Boolean         @default(false)
-  creadoPorAgenteId  String?         @db.Uuid
-  creadoPorClienteId String?         @db.Uuid
-  asignadoAId        String?         @db.Uuid
-  revisadoPorId      String?         @db.Uuid
-  estadoPeticionId   String?         @db.Uuid
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  clienteId          String              @db.Uuid
+  unidadComercialId  String              @db.Uuid
+  tipoId             String              @db.Uuid
+  estadoId           String?             @db.Uuid
+  prioridadId        String              @db.Uuid
+  moduloId           String?             @db.Uuid
+  releaseId          String?             @db.Uuid
+  hotfixId           String?             @db.Uuid
+  reproducido        Boolean             @default(false)
+  creadoPorAgenteId  String?             @db.Uuid
+  creadoPorClienteId String?             @db.Uuid
+  asignadoAId        String?             @db.Uuid
+  revisadoPorId      String?             @db.Uuid
+  estadoPeticionId   String?             @db.Uuid
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   closedAt           DateTime?
-  asignadoA          Agente?         @relation("TareaAsignadaAAgente", fields: [asignadoAId], references: [id], onDelete: Restrict)
-  cliente            Cliente         @relation(fields: [clienteId], references: [id])
-  creadoPorAgente    Agente?         @relation("TareaCreadaPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
-  creadoPorCliente   ClienteUsuario? @relation("TareaCreadaPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
-  estado             EstadoTarea?    @relation(fields: [estadoId], references: [id], onDelete: Restrict)
-  estadoPeticion     EstadoPeticion? @relation(fields: [estadoPeticionId], references: [id], onDelete: Restrict)
-  hotfix             Hotfix?         @relation(fields: [hotfixId], references: [id], onDelete: Restrict)
-  modulo             Modulo?         @relation(fields: [moduloId], references: [id], onDelete: Restrict)
-  prioridad          PrioridadTarea  @relation(fields: [prioridadId], references: [id])
-  release            Release?        @relation(fields: [releaseId], references: [id], onDelete: Restrict)
-  revisadoPor        Agente?         @relation("TareaRevisadaPorAgente", fields: [revisadoPorId], references: [id], onDelete: Restrict)
-  tipo               TipoTarea       @relation(fields: [tipoId], references: [id])
-  unidadComercial    UnidadComercial @relation(fields: [unidadComercialId], references: [id])
+  asignadoA          Agente?             @relation("TareaAsignadaAAgente", fields: [asignadoAId], references: [id], onDelete: Restrict)
+  cliente            Cliente             @relation(fields: [clienteId], references: [id])
+  creadoPorAgente    Agente?             @relation("TareaCreadaPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
+  creadoPorCliente   ClienteUsuario?     @relation("TareaCreadaPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
+  estado             EstadoTarea?        @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  estadoPeticion     EstadoPeticion?     @relation(fields: [estadoPeticionId], references: [id], onDelete: Restrict)
+  hotfix             Hotfix?             @relation(fields: [hotfixId], references: [id], onDelete: Restrict)
+  modulo             Modulo?             @relation(fields: [moduloId], references: [id], onDelete: Restrict)
+  prioridad          PrioridadTarea      @relation(fields: [prioridadId], references: [id])
+  release            Release?            @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  revisadoPor        Agente?             @relation("TareaRevisadaPorAgente", fields: [revisadoPorId], references: [id], onDelete: Restrict)
+  tipo               TipoTarea           @relation(fields: [tipoId], references: [id])
+  unidadComercial    UnidadComercial     @relation(fields: [unidadComercialId], references: [id])
   eventos            TareaEvento[]
+  notificaciones     NotificacionTarea[]
 
   @@index([clienteId, createdAt])
   @@index([tipoId, estadoId])
@@ -208,23 +209,24 @@ model Tarea {
 }
 
 model TareaEvento {
-  id                 String          @id @default(uuid()) @db.Uuid
-  tareaId            String          @db.Uuid
+  id                 String              @id @default(uuid()) @db.Uuid
+  tareaId            String              @db.Uuid
   tipo               EventoTipo
-  canal              String?         @db.VarChar(50)
+  canal              String?             @db.VarChar(50)
   asunto             String?
   cuerpo             String?
   payload            Json?
   actorTipo          ActorTipo
-  creadoPorAgenteId  String?         @db.Uuid
-  creadoPorClienteId String?         @db.Uuid
-  visibleEnTimeline  Boolean         @default(true)
-  visibleParaCliente Boolean         @default(false)
-  createdAt          DateTime        @default(now())
+  creadoPorAgenteId  String?             @db.Uuid
+  creadoPorClienteId String?             @db.Uuid
+  visibleEnTimeline  Boolean             @default(true)
+  visibleParaCliente Boolean             @default(false)
+  createdAt          DateTime            @default(now())
   updatedAt          DateTime?
-  creadoPorAgente    Agente?         @relation("EventoCreadoPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
-  creadoPorCliente   ClienteUsuario? @relation("EventoCreadoPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
-  tarea              Tarea           @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  creadoPorAgente    Agente?             @relation("EventoCreadoPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
+  creadoPorCliente   ClienteUsuario?     @relation("EventoCreadoPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
+  tarea              Tarea               @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  notificaciones     NotificacionTarea[]
 
   @@index([tareaId, createdAt])
   @@index([visibleEnTimeline])
@@ -497,30 +499,92 @@ enum RamaTipo {
   PRODUCCION
 }
 
+enum TipoNotificacion {
+  EMAIL
+  APP // Future: real-time notifications
+}
+
+enum EstadoNotificacion {
+  PENDIENTE
+  PROCESANDO
+  ENVIADO
+  ERROR
+  CANCELADO
+}
+
 model Plantilla {
-  id          String   @id @default(uuid()) @db.Uuid
-  codigo      String   @unique @db.VarChar(50)
-  descripcion String?
-  texto       String   @db.Text
-  categoria   String?  @db.VarChar(50)
-  orden       Int      @default(0)
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String                     @id @default(uuid()) @db.Uuid
+  codigo              String                     @unique @db.VarChar(50)
+  descripcion         String?
+  texto               String                     @db.Text
+  categoria           String?                    @db.VarChar(50)
+  orden               Int                        @default(0)
+  activo              Boolean                    @default(true)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  notificacionConfigs NotificacionConfigEvento[]
+}
+
+// Notification configuration per event type
+model NotificacionConfigEvento {
+  id               String     @id @default(uuid()) @db.Uuid
+  eventoTipo       EventoTipo @unique
+  habilitado       Boolean    @default(true)
+  notificarCliente Boolean    @default(true)
+  notificarAgente  Boolean    @default(true)
+  plantillaId      String?    @db.Uuid
+  asuntoDefault    String?    @db.VarChar(500)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  plantilla        Plantilla? @relation(fields: [plantillaId], references: [id])
+}
+
+// Task notification queue
+model NotificacionTarea {
+  id               String           @id @default(uuid()) @db.Uuid
+  tareaId          String           @db.Uuid
+  eventoId         String?          @db.Uuid
+  eventoTipo       EventoTipo
+  tipoNotificacion TipoNotificacion @default(EMAIL)
+
+  emailsTo    String[]
+  emailsCc    String[]
+  asunto      String   @db.VarChar(500)
+  cuerpoHtml  String
+  cuerpoTexto String?
+
+  estado      EstadoNotificacion @default(PENDIENTE)
+  prioridad   Int                @default(0)
+  retryCount  Int                @default(0)
+  maxRetries  Int                @default(3)
+  nextRetryAt DateTime?
+
+  logEnvio     String? @db.Text
+  errorMessage String?
+
+  createdAt DateTime  @default(now())
+  enviadoAt DateTime?
+
+  tarea  Tarea        @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  evento TareaEvento? @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+
+  @@index([estado, nextRetryAt])
+  @@index([tareaId])
+  @@index([createdAt])
 }
 
 // Dashboard configuration - stores widget layout and filters
 // isDefault=true means this is the shared config all agents see
 // When an admin saves, it updates the default config
 model DashboardConfig {
-  id            String   @id @default(uuid()) @db.Uuid
-  nombre        String   @db.VarChar(100)
-  isDefault     Boolean  @default(false)
+  id          String   @id @default(uuid()) @db.Uuid
+  nombre      String   @db.VarChar(100)
+  isDefault   Boolean  @default(false)
   // JSON structure for widget layout: { widgets: [{ id, type, position: {x,y,w,h}, filters: {...} }] }
-  layout        Json
-  createdById   String?  @db.Uuid
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  layout      Json
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([isDefault], map: "unique_default_dashboard")
 }

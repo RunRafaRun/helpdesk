@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from "@nestjs/common";
 import { PrismaService } from "../prisma.service";
 import { CrearComentarioDto, CrearTareaDto, ListarTareasDto, ActualizarTareaDto, AsignarTareaDto, ActualizarComentarioDto } from "./dto";
 import { ActorTipo, EventoTipo, Prisma, RamaTipo } from "@prisma/client";
+import { NotificacionTareaService } from "../notificaciones/notificacion-tarea.service";
 
 @Injectable()
 export class TareasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => NotificacionTareaService))
+    private readonly notificacionTareaService: NotificacionTareaService,
+  ) {}
 
   private async generarNumero(): Promise<string> {
     const year = new Date().getFullYear();
@@ -178,7 +183,7 @@ export class TareasService {
       }
     }
 
-    await this.prisma.tareaEvento.create({
+    const evento = await this.prisma.tareaEvento.create({
       data: {
         tareaId: id,
         tipo,
@@ -191,6 +196,23 @@ export class TareasService {
         payload: Object.keys(payload).length > 0 ? (payload as Prisma.InputJsonValue) : undefined,
       },
     });
+
+    // Queue notification for agent responses (visible to client) and client messages
+    if (tipo === EventoTipo.RESPUESTA_AGENTE && visibleParaCliente) {
+      await this.notificacionTareaService.queueNotification({
+        tareaId: id,
+        eventoId: evento.id,
+        eventoTipo: EventoTipo.RESPUESTA_AGENTE,
+      });
+    }
+
+    if (tipo === EventoTipo.MENSAJE_CLIENTE) {
+      await this.notificacionTareaService.queueNotification({
+        tareaId: id,
+        eventoId: evento.id,
+        eventoTipo: EventoTipo.MENSAJE_CLIENTE,
+      });
+    }
 
     return this.timeline(id, true);
   }
@@ -414,7 +436,7 @@ export class TareasService {
     });
 
     for (const change of changes) {
-      await this.prisma.tareaEvento.create({
+      const evento = await this.prisma.tareaEvento.create({
         data: {
           tareaId: id,
           tipo: change.eventoTipo,
@@ -426,6 +448,15 @@ export class TareasService {
           payload: { field: change.field, oldValue: change.oldValue, newValue: change.newValue },
         },
       });
+
+      // Queue notification for status changes
+      if (change.eventoTipo === EventoTipo.CAMBIO_ESTADO) {
+        await this.notificacionTareaService.queueNotification({
+          tareaId: id,
+          eventoId: evento.id,
+          eventoTipo: EventoTipo.CAMBIO_ESTADO,
+        });
+      }
     }
 
     return this.obtener(id);
@@ -450,7 +481,7 @@ export class TareasService {
       data: { asignadoAId: dto.agenteId },
     });
 
-    await this.prisma.tareaEvento.create({
+    const evento = await this.prisma.tareaEvento.create({
       data: {
         tareaId: id,
         tipo: EventoTipo.ASIGNACION,
@@ -468,6 +499,13 @@ export class TareasService {
           nuevoAgenteNombre: nuevoAgente.nombre,
         },
       },
+    });
+
+    // Queue notification for assignment
+    await this.notificacionTareaService.queueNotification({
+      tareaId: id,
+      eventoId: evento.id,
+      eventoTipo: EventoTipo.ASIGNACION,
     });
 
     return this.obtener(id);
