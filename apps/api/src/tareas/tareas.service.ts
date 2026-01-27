@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service";
-import { CrearComentarioDto, CrearTareaDto, ListarTareasDto, ActualizarTareaDto, AsignarTareaDto } from "./dto";
+import { CrearComentarioDto, CrearTareaDto, ListarTareasDto, ActualizarTareaDto, AsignarTareaDto, ActualizarComentarioDto } from "./dto";
 import { ActorTipo, EventoTipo, Prisma, RamaTipo } from "@prisma/client";
 
 @Injectable()
@@ -165,6 +165,19 @@ export class TareasService {
       tipo === EventoTipo.RESPUESTA_AGENTE ? (dto.visibleParaCliente ?? true) :
       false;
 
+    // Build payload with relatedToId if provided
+    const payload: Record<string, unknown> = {};
+    if (dto.relatedToId) {
+      payload.relatedToId = dto.relatedToId;
+    }
+    // Include agent info in payload for display purposes
+    if (agenteId) {
+      const agente = await this.prisma.agente.findUnique({ where: { id: agenteId } });
+      if (agente) {
+        payload.creadoPorAgente = { id: agente.id, nombre: agente.nombre, usuario: agente.usuario };
+      }
+    }
+
     await this.prisma.tareaEvento.create({
       data: {
         tareaId: id,
@@ -175,10 +188,81 @@ export class TareasService {
         visibleParaCliente,
         visibleEnTimeline: true,
         creadoPorAgenteId: agenteId,
+        payload: Object.keys(payload).length > 0 ? (payload as Prisma.InputJsonValue) : undefined,
       },
     });
 
     return this.timeline(id, true);
+  }
+
+  async actualizarComentario(tareaId: string, eventoId: string, dto: ActualizarComentarioDto, agenteId?: string) {
+    // Get the event
+    const evento = await this.prisma.tareaEvento.findFirst({
+      where: { id: eventoId, tareaId },
+    });
+    if (!evento) throw new NotFoundException("Comentario no encontrado");
+
+    // Only allow editing comments (not system events)
+    const editableTipos: EventoTipo[] = [EventoTipo.RESPUESTA_AGENTE, EventoTipo.NOTA_INTERNA];
+    if (!editableTipos.includes(evento.tipo)) {
+      throw new ForbiddenException("Solo se pueden editar respuestas de agente o notas internas");
+    }
+
+    // Check if there are any newer comments after this one
+    const newerComments = await this.prisma.tareaEvento.findFirst({
+      where: {
+        tareaId,
+        createdAt: { gt: evento.createdAt },
+        tipo: { in: [EventoTipo.MENSAJE_CLIENTE, EventoTipo.RESPUESTA_AGENTE, EventoTipo.NOTA_INTERNA] },
+      },
+    });
+    if (newerComments) {
+      throw new ForbiddenException("No se puede editar un comentario si hay comentarios posteriores");
+    }
+
+    // Update the comment
+    await this.prisma.tareaEvento.update({
+      where: { id: eventoId },
+      data: {
+        cuerpo: dto.cuerpo,
+        updatedAt: new Date(),
+      },
+    });
+
+    return this.timeline(tareaId, true);
+  }
+
+  async eliminarComentario(tareaId: string, eventoId: string, agenteId?: string) {
+    // Get the event
+    const evento = await this.prisma.tareaEvento.findFirst({
+      where: { id: eventoId, tareaId },
+    });
+    if (!evento) throw new NotFoundException("Comentario no encontrado");
+
+    // Only allow deleting comments (not system events)
+    const deletableTipos: EventoTipo[] = [EventoTipo.RESPUESTA_AGENTE, EventoTipo.NOTA_INTERNA];
+    if (!deletableTipos.includes(evento.tipo)) {
+      throw new ForbiddenException("Solo se pueden eliminar respuestas de agente o notas internas");
+    }
+
+    // Check if there are any newer comments after this one
+    const newerComments = await this.prisma.tareaEvento.findFirst({
+      where: {
+        tareaId,
+        createdAt: { gt: evento.createdAt },
+        tipo: { in: [EventoTipo.MENSAJE_CLIENTE, EventoTipo.RESPUESTA_AGENTE, EventoTipo.NOTA_INTERNA] },
+      },
+    });
+    if (newerComments) {
+      throw new ForbiddenException("No se puede eliminar un comentario si hay comentarios posteriores");
+    }
+
+    // Delete the comment
+    await this.prisma.tareaEvento.delete({
+      where: { id: eventoId },
+    });
+
+    return this.timeline(tareaId, true);
   }
 
   async listar(dto: ListarTareasDto) {
@@ -552,16 +636,102 @@ export class TareasService {
       produccionHotfix = produccionRelease.hotfixes.find(h => h.rama === RamaTipo.PRODUCCION) ?? null;
     }
 
+    // NEW: Tareas por Prioridad Pendientes (tasks with default estado grouped by prioridad)
+    const defaultEstado = await this.prisma.estadoTarea.findFirst({ where: { porDefecto: true } });
+    const pendientesByPrioridad = defaultEstado ? await this.prisma.tarea.groupBy({
+      by: ["prioridadId"],
+      _count: { id: true },
+      where: { closedAt: null, estadoId: defaultEstado.id },
+    }) : [];
+    const byPrioridadPendientes = pendientesByPrioridad.map((item) => ({
+      prioridad: prioridadesMap.get(item.prioridadId) || { codigo: "Sin prioridad", id: null },
+      count: item._count.id,
+    }));
+    const totalPendientesPorEstado = pendientesByPrioridad.reduce((sum, p) => sum + p._count.id, 0);
+
+    // NEW: Tickets Nuevos Pendientes (tasks with default estado, not yet processed)
+    const ticketsNuevosPendientes = defaultEstado ? await this.prisma.tarea.findMany({
+      where: { closedAt: null, estadoId: defaultEstado.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      include: {
+        cliente: { select: { codigo: true } },
+        estado: { select: { codigo: true } },
+        prioridad: { select: { codigo: true, color: true } },
+      },
+    }) : [];
+
+    // NEW: Resumen Tareas x Cliente/Estado (pivot table)
+    const allClientes = await this.prisma.cliente.findMany({
+      where: { activo: true },
+      select: { id: true, codigo: true },
+      orderBy: { codigo: "asc" },
+    });
+    const allEstados = await this.prisma.estadoTarea.findMany({
+      where: { activo: true },
+      select: { id: true, codigo: true, orden: true },
+      orderBy: { orden: "asc" },
+    });
+    
+    // Get counts grouped by clienteId AND estadoId
+    const tareasByClienteEstado = await this.prisma.tarea.groupBy({
+      by: ["clienteId", "estadoId"],
+      _count: { id: true },
+      where: { closedAt: null },
+    });
+    
+    // Build pivot data structure
+    const clienteEstadoMap = new Map<string, Map<string, number>>();
+    for (const item of tareasByClienteEstado) {
+      if (!clienteEstadoMap.has(item.clienteId)) {
+        clienteEstadoMap.set(item.clienteId, new Map());
+      }
+      const estadoKey = item.estadoId ?? "SIN_ESTADO";
+      clienteEstadoMap.get(item.clienteId)!.set(estadoKey, item._count.id);
+    }
+    
+    const resumenClienteEstado = allClientes
+      .filter(c => clienteEstadoMap.has(c.id)) // Only include clients with tasks
+      .map(cliente => {
+        const estadoCounts = clienteEstadoMap.get(cliente.id) || new Map();
+        const byEstado: Record<string, number> = {};
+        let total = 0;
+        for (const estado of allEstados) {
+          const count = estadoCounts.get(estado.id) || 0;
+          byEstado[estado.codigo] = count;
+          total += count;
+        }
+        return {
+          cliente: { id: cliente.id, codigo: cliente.codigo },
+          byEstado,
+          total,
+        };
+      })
+      .sort((a, b) => b.total - a.total); // Sort by total descending
+
     return {
       totals: {
         abiertas: totalAbiertas,
         cerradas: totalCerradas,
         sinAsignar,
+        pendientes: totalPendientesPorEstado,
       },
       byEstado,
       byTipo,
       byCliente,
       byPrioridad,
+      byPrioridadPendientes,
+      ticketsNuevosPendientes: ticketsNuevosPendientes.map(t => ({
+        id: t.id,
+        numero: t.numero,
+        titulo: t.titulo,
+        createdAt: t.createdAt,
+        cliente: t.cliente,
+        estado: t.estado,
+        prioridad: t.prioridad,
+      })),
+      resumenClienteEstado,
+      estados: allEstados.map(e => ({ id: e.id, codigo: e.codigo, orden: e.orden })),
       latestComments,
       nextReleases,
       latestRelease,

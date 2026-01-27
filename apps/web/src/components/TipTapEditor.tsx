@@ -297,6 +297,7 @@ const MenuBar = ({ editor, onImageInsert }: { editor: any; onImageInsert: () => 
         padding: "8px",
         borderBottom: "1px solid var(--border)",
         background: "var(--bg)",
+        flexShrink: 0,
       }}
     >
       {/* Undo / Redo */}
@@ -674,6 +675,10 @@ export default function TipTapEditor({ content, onChange, placeholder }: TipTapE
         borderRadius: "8px",
         overflow: "hidden",
         background: "var(--panel)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        flex: 1,
       }}
     >
       <input
@@ -687,6 +692,8 @@ export default function TipTapEditor({ content, onChange, placeholder }: TipTapE
       <div
         style={{
           minHeight: "200px",
+          flex: 1,
+          overflow: "auto",
         }}
       >
         <EditorContent

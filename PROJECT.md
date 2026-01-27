@@ -68,8 +68,9 @@ infra/
   - `releases.admin.controller.ts` - Release/hotfix management
   - `rbac.admin.controller.ts` - Role and permission management
   - `configuracion.admin.controller.ts` - Mail configuration
-  - `lookup.admin.controller.ts` - Lookup tables (tipos/estados/prioridades)
+  - `lookup.admin.controller.ts` - Permission-free lookups for dropdowns (clientes, modulos, releases, tipos/estados/prioridades)
   - `plantillas.admin.controller.ts` - Reusable text templates with wildcards
+  - `dashboard.admin.controller.ts` - Dashboard layout configuration (admin customizable)
 - **TareasModule**: Full task management with:
   - Auto-generated task number (yyyyNNNNN format, unique per year)
   - Timeline events (comments, status changes, assignments)
@@ -101,7 +102,23 @@ infra/
 | `/config/plantillas` | Reusable text templates with wildcards |
 | `/config/notificaciones` | Email configuration |
 | `/clientes/:clienteCodigo/ficha` | Client profile view with tabs |
-| `/` (Dashboard) | Statistics dashboard with dynamic priority colors |
+| `/` (Dashboard) | Statistics dashboard with dynamic priority colors (admin customizable layout) |
+
+### Dashboard Customization
+
+Admins can customize the dashboard layout for all users:
+- **Edit Mode**: Click "Editar" to enter edit mode (admin only)
+- **Widget Visibility**: Toggle widgets on/off with eye icons
+- **Widget Order**: Reorder widgets with up/down arrows
+- **Persist**: Changes saved to database via `DashboardConfig` model
+- **Reset**: Restore default layout with reset button
+
+Widgets available:
+1. Task Status Overview (Resumen Estado)
+2. Tasks by Priority (Por Prioridad)
+3. Tasks by Module (Por Modulo)
+4. Recent Tasks (Tareas Recientes)
+5. Tasks by Client (Por Cliente)
 
 ### Key Data Models
 
@@ -126,6 +143,7 @@ infra/
 | **NotificacionMasiva** | Mass email notifications with scheduling |
 | **ConfiguracionMail** | Email server configuration (SMTP or Azure OAuth) |
 | **Plantilla** | Reusable text templates with wildcard support |
+| **DashboardConfig** | Dashboard layout configuration (widget order and visibility) |
 
 ### Lookup Tables (TipoTarea, EstadoTarea, PrioridadTarea)
 
@@ -223,6 +241,18 @@ Templates support wildcards that are replaced with actual values at runtime:
 | CONFIG_RELEASES | Release/hotfix management |
 | CONFIG_RBAC | Role and permission management |
 | CONFIG_NOTIFICACIONES | Mass notifications and mail config |
+
+### Permission-Free Lookup Endpoints
+
+For dropdowns in task forms, the following endpoints require only JWT authentication (no specific permissions):
+- `GET /admin/lookup/clientes` - Returns active clients with id, codigo, descripcion, jefeProyecto1, jefeProyecto2
+- `GET /admin/lookup/modulos` - Returns active modules with id, codigo, descripcion
+- `GET /admin/lookup/releases` - Returns all releases with hotfixes
+- `GET /admin/lookup/tipos-tarea` - Returns task types
+- `GET /admin/lookup/estados-tarea` - Returns task states
+- `GET /admin/lookup/prioridades-tarea` - Returns task priorities
+
+This allows agents (AGENTE role) to create/edit tasks without requiring CONFIG_CLIENTES or CONFIG_MODULOS permissions.
 
 ## Common Commands
 

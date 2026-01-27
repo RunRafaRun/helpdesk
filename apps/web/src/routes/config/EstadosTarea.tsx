@@ -19,6 +19,9 @@ export default function EstadosTarea() {
   const [descripcion, setDescripcion] = React.useState("");
   const [orden, setOrden] = React.useState(0);
   const [porDefecto, setPorDefecto] = React.useState(false);
+  const [activo, setActivo] = React.useState(true);
+  const [replacementId, setReplacementId] = React.useState("");
+  const [showInactive, setShowInactive] = React.useState(false);
 
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -26,7 +29,7 @@ export default function EstadosTarea() {
   async function loadData() {
     setLoading(true);
     try {
-      const data = await listEstadosTarea();
+      const data = await listEstadosTarea({ includeInactive: showInactive });
       setItems(data);
     } catch (e: any) {
       console.error("Error loading estados tarea:", e);
@@ -37,15 +40,18 @@ export default function EstadosTarea() {
 
   React.useEffect(() => {
     loadData();
-  }, []);
+  }, [showInactive]);
 
-  function resetForm() {
+  function resetForm(options?: { keepOpen?: boolean }) {
+    const keepOpen = options?.keepOpen ?? false;
     setCodigo("");
     setDescripcion("");
     setOrden(0);
     setPorDefecto(false);
+    setActivo(true);
+    setReplacementId("");
     setEditingId(null);
-    setShowForm(false);
+    setShowForm(keepOpen);
     setError(null);
   }
 
@@ -55,6 +61,8 @@ export default function EstadosTarea() {
     setDescripcion(item.descripcion || "");
     setOrden(item.orden);
     setPorDefecto(item.porDefecto);
+    setActivo(item.activo !== false);
+    setReplacementId("");
     setShowForm(true);
     setError(null);
   }
@@ -69,21 +77,27 @@ export default function EstadosTarea() {
     setError(null);
     try {
       if (editingId) {
+        if (!activo && !replacementId) {
+          setError("Debe seleccionar un reemplazo para desactivar.");
+          return;
+        }
         await updateEstadoTarea(editingId, {
           codigo: codigo.trim(),
           descripcion: descripcion.trim() || undefined,
           orden,
           porDefecto,
-        });
+          activo,
+        }, replacementId || undefined);
       } else {
         await createEstadoTarea({
           codigo: codigo.trim(),
           descripcion: descripcion.trim() || undefined,
           orden,
           porDefecto,
+          activo,
         });
       }
-      resetForm();
+      resetForm(editingId ? undefined : { keepOpen: true });
       await loadData();
     } catch (err: any) {
       setError(err?.message ?? "Error al guardar");
@@ -92,13 +106,21 @@ export default function EstadosTarea() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(item: EstadoTarea) {
     if (!confirm("¿Esta seguro de eliminar este registro?")) return;
     try {
-      await deleteEstadoTarea(id);
+      await deleteEstadoTarea(item.id, replacementId || undefined);
       await loadData();
+      setReplacementId("");
+      setEditingId(null);
     } catch (err: any) {
-      alert(err?.message ?? "Error al eliminar");
+      const message = err?.message ?? "Error al eliminar";
+      if (message.includes("tareas asociadas") || message.includes("reemplazo")) {
+        startEdit(item);
+        setError("Seleccione un reemplazo y vuelva a intentar.");
+        return;
+      }
+      alert(message);
     }
   }
 
@@ -117,11 +139,21 @@ export default function EstadosTarea() {
       <div className="card" style={{ padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600 }}>Listado</h2>
-          {!showForm && (
-            <button className="btn primary" onClick={() => setShowForm(true)}>
-              + Nuevo
-            </button>
-          )}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+              />
+              Mostrar desactivados
+            </label>
+            {!showForm && (
+              <button className="btn primary" onClick={() => setShowForm(true)}>
+                + Nuevo
+              </button>
+            )}
+          </div>
         </div>
 
         {showForm && (
@@ -161,6 +193,29 @@ export default function EstadosTarea() {
                 />
               </div>
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+              <div className="field">
+                <div className="label">Estado</div>
+                <select className="input" value={activo ? "ACTIVO" : "DESACTIVADO"} onChange={(e) => setActivo(e.target.value === "ACTIVO")}> 
+                  <option value="ACTIVO">Activo</option>
+                  <option value="DESACTIVADO">Desactivado</option>
+                </select>
+              </div>
+              {editingId && (
+                <div className="field">
+                  <div className="label">Reasignar tareas a</div>
+                  <select className="input" value={replacementId} onChange={(e) => setReplacementId(e.target.value)}>
+                    <option value="">-- Seleccionar --</option>
+                    {items.filter((i) => i.id !== editingId && i.activo !== false).map((i) => (
+                      <option key={i.id} value={i.id}>{i.codigo}</option>
+                    ))}
+                  </select>
+                  <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>
+                    Requerido si hay tareas asociadas.
+                  </div>
+                </div>
+              )}
+            </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input
@@ -193,10 +248,11 @@ export default function EstadosTarea() {
               <thead>
                 <tr>
                   <th style={{ width: 80 }}>Orden</th>
-                  <th style={{ width: 150 }}>Codigo</th>
-                  <th>Descripcion</th>
-                  <th style={{ width: 100 }}>Por Defecto</th>
-                  <th style={{ width: 120 }}>Acciones</th>
+                <th style={{ width: 150 }}>Codigo</th>
+                <th>Descripcion</th>
+                <th style={{ width: 120 }}>Estado</th>
+                <th style={{ width: 100 }}>Por Defecto</th>
+                <th style={{ width: 120 }}>Acciones</th>
                 </tr>
               </thead>
             <tbody>
@@ -204,10 +260,11 @@ export default function EstadosTarea() {
                 <tr key={item.id}>
                   <td>{item.orden}</td>
                   <td style={{ fontWeight: 500 }}>{item.codigo}</td>
-                  <td>{item.descripcion || "-"}</td>
-                  <td>
-                    {item.porDefecto && (
-                      <span style={{ color: "#059669", fontWeight: 500 }}>Si</span>
+                <td>{item.descripcion || "-"}</td>
+                <td>{item.activo !== false ? "Activo" : "Desactivado"}</td>
+                <td>
+                  {item.porDefecto && (
+                    <span style={{ color: "#059669", fontWeight: 500 }}>Si</span>
                     )}
                   </td>
                   <td>
@@ -218,7 +275,7 @@ export default function EstadosTarea() {
                       <button
                         className="btn"
                         style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDelete(item)}
                       >
                         Eliminar
                       </button>

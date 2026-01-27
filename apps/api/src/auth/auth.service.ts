@@ -10,6 +10,12 @@ export class AuthService {
   
 
 async getMe(agenteId: string) {
+  const agente = await this.prisma.agente.findUnique({
+    where: { id: agenteId },
+    select: { id: true, usuario: true, nombre: true, role: true },
+  });
+  if (!agente) return null;
+
   const roles = await this.prisma.agenteRoleAssignment.findMany({
     where: { agenteId },
     include: { role: { include: { permisos: { include: { permission: true } } } } },
@@ -22,7 +28,14 @@ async getMe(agenteId: string) {
     )
   );
 
-  return { id: agenteId, roles: roleCodigos, permisos };
+  return { 
+    id: agente.id, 
+    usuario: agente.usuario, 
+    nombre: agente.nombre,
+    role: agente.role,
+    roles: roleCodigos, 
+    permisos 
+  };
 }
 
 async login(usuario: string, password: string) {

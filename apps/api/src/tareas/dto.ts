@@ -79,6 +79,11 @@ export class CrearComentarioDto {
   @IsOptional()
   @IsBoolean()
   visibleParaCliente?: boolean;
+
+  @ApiPropertyOptional({ description: "ID del evento/comentario al que se responde (para tracking de relaciones)" })
+  @IsOptional()
+  @IsUUID()
+  relatedToId?: string;
 }
 
 export class ListarTareasDto {
@@ -181,4 +186,11 @@ export class AsignarTareaDto {
   @IsString()
   @IsNotEmpty()
   agenteId!: string;
+}
+
+export class ActualizarComentarioDto {
+  @ApiProperty({ description: "Nuevo contenido del comentario" })
+  @IsString()
+  @IsNotEmpty()
+  cuerpo!: string;
 }

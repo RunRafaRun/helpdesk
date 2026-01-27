@@ -1125,8 +1125,10 @@ const ClienteFichaView: React.FC = () => {
     }
 
     if (activeTab === 'releases') {
+      // Only show PRODUCCION releases and hotfixes
+      const produccionReleases = allReleases.filter((r: any) => r.rama === 'PRODUCCION');
       const selectedRelease = allReleases.find(r => r.id === formData.releaseId);
-      const availableHotfixes = selectedRelease?.hotfixes || [];
+      const availableHotfixes = (selectedRelease?.hotfixes || []).filter((hf: any) => hf.rama === 'PRODUCCION');
       // Only read-only if the ORIGINAL record was INSTALADO (not when user selects INSTALADO)
       const isInstalado = editingItem?.estado === 'INSTALADO';
       const hasPlanificado = items.some(item => item.estado === 'PLANIFICADO' && item.id !== editingItem?.id);
@@ -1173,7 +1175,7 @@ const ClienteFichaView: React.FC = () => {
                 disabled={isInstalado}
               >
                 <option value="">Seleccione release...</option>
-                {allReleases.map((r) => (
+                {produccionReleases.map((r: any) => (
                   <option key={r.id} value={r.id}>{r.codigo}{r.descripcion ? ` - ${r.descripcion}` : ''}</option>
                 ))}
               </select>

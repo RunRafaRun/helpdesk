@@ -19,3 +19,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Prisma models use PascalCase
 - Check existing patterns before implementing new features
 - Update PROJECT.md when making significant changes
+
+## Recent Features
+
+- **Dashboard Customization**: Admins can customize widget layout (visibility/order) for all users
+- **Permission-Free Lookups**: `/admin/lookup/*` endpoints for dropdowns (no permission required, just JWT)
+- **Plantillas System**: Reusable text templates with wildcard support

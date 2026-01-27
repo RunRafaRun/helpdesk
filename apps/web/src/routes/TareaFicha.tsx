@@ -12,12 +12,15 @@ import {
   asignarTarea,
   cerrarTarea,
   addComentarioTarea,
+  updateComentarioTarea,
+  deleteComentarioTarea,
   listAgentes,
   listEstadosTarea,
   listPrioridadesTarea,
   listTiposTarea,
-  listModulos,
-  listReleases,
+  listModulosLookup,
+  listReleasesLookup,
+  ModuloLookup,
   getCliente,
   listContactos,
   listClienteSoftware,
@@ -33,7 +36,6 @@ import {
   EstadoTarea,
   PrioridadTarea,
   TipoTarea,
-  Modulo,
   Release,
   Cliente,
 } from "../lib/api";
@@ -656,7 +658,7 @@ function ClientePopup({ clienteId, onClose }: { clienteId: string; onClose: () =
   );
 }
 
-// Comment Editor Modal
+// Comment Editor Modal - Optimized for maximum writing space
 function CommentEditorModal({
   initialContent,
   initialType,
@@ -715,15 +717,38 @@ function CommentEditorModal({
   }
 
   // Get involved agents (Jefe Proyecto 1, Jefe Proyecto 2, assigned, agents from previous comments)
-  const involvedAgents = React.useMemo(() => {
+  // Returns both the list and a Set of all IDs for efficient filtering
+  const { involvedAgents, allInvolvedIds } = React.useMemo(() => {
     const involvedSet = new Set<string>();
-    const involvedList: { id: string; nombre: string; reason: string }[] = [];
+    const involvedList: { id: string; nombre: string; usuario: string; reason: string }[] = [];
+
+    // Find JP1 and JP2 agent objects by matching usuario field
+    const jp1Usuario = tarea?.cliente?.jefeProyecto1?.toLowerCase();
+    const jp2Usuario = tarea?.cliente?.jefeProyecto2?.toLowerCase();
+    
+    // Add JP1 agent if found
+    if (jp1Usuario) {
+      const jp1Agent = agentes.find((a) => a.usuario?.toLowerCase() === jp1Usuario);
+      if (jp1Agent && !involvedSet.has(jp1Agent.id)) {
+        involvedSet.add(jp1Agent.id);
+        involvedList.push({ id: jp1Agent.id, nombre: jp1Agent.nombre, usuario: jp1Agent.usuario || '', reason: "JP1" });
+      }
+    }
+    
+    // Add JP2 agent if found
+    if (jp2Usuario) {
+      const jp2Agent = agentes.find((a) => a.usuario?.toLowerCase() === jp2Usuario);
+      if (jp2Agent && !involvedSet.has(jp2Agent.id)) {
+        involvedSet.add(jp2Agent.id);
+        involvedList.push({ id: jp2Agent.id, nombre: jp2Agent.nombre, usuario: jp2Agent.usuario || '', reason: "JP2" });
+      }
+    }
 
     // Assigned agent
     if (tarea?.asignadoA) {
       if (!involvedSet.has(tarea.asignadoA.id)) {
         involvedSet.add(tarea.asignadoA.id);
-        involvedList.push({ id: tarea.asignadoA.id, nombre: tarea.asignadoA.nombre, reason: "Asignado" });
+        involvedList.push({ id: tarea.asignadoA.id, nombre: tarea.asignadoA.nombre, usuario: tarea.asignadoA.usuario || '', reason: "Asignado" });
       }
     }
 
@@ -734,117 +759,124 @@ function CommentEditorModal({
           const agente = agentes.find((a) => a.id === event.creadoPorAgenteId);
           if (agente) {
             involvedSet.add(agente.id);
-            involvedList.push({ id: agente.id, nombre: agente.nombre, reason: "Comentó anteriormente" });
+            involvedList.push({ id: agente.id, nombre: agente.nombre, usuario: agente.usuario || '', reason: "Comentó anteriormente" });
           }
         }
       }
     }
 
-    return involvedList;
+    return { involvedAgents: involvedList, allInvolvedIds: involvedSet };
   }, [tarea, timeline, agentes]);
 
-  // Available agents to add (exclude already involved)
+  // Available agents to add - only those NOT already involved
   const availableAgents = React.useMemo(() => {
-    const involvedIds = new Set(involvedAgents.map((a) => a.id));
-    return agentes.filter((a) => !involvedIds.has(a.id));
-  }, [agentes, involvedAgents]);
+    return agentes.filter((a) => !allInvolvedIds.has(a.id));
+  }, [agentes, allInvolvedIds]);
 
   return (
     <div className="modalOverlay" onClick={onClose}>
       <div
         className="modalCard"
-        style={{ width: "95vw", maxWidth: "95vw", height: "95vh", maxHeight: "95vh", overflow: "hidden", display: "flex", flexDirection: "column" }}
+        style={{ width: "95vw", maxWidth: "95vw", height: "95vh", maxHeight: "95vh", overflow: "hidden", display: "flex", flexDirection: "column", padding: 0 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
-          <div className="h1" style={{ fontSize: 18 }}>{isEditing ? "Editar Comentario" : "Nuevo Comentario"}</div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-            Tarea #{tarea?.numero} - {tarea?.cliente?.codigo}
+        {/* Compact header - single line with all controls */}
+        <div style={{ 
+          padding: "4px 12px", 
+          borderBottom: "1px solid var(--border)", 
+          background: "var(--bg-secondary)", 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center",
+          flexShrink: 0
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{isEditing ? "Editar" : "Nuevo"} · #{tarea?.numero} - {tarea?.cliente?.codigo}</span>
+            <div style={{ display: "flex", gap: 12, borderLeft: "1px solid var(--border)", paddingLeft: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 11 }}>
+                <input
+                  type="radio"
+                  name="commentType"
+                  checked={commentType === "RESPUESTA_AGENTE"}
+                  onChange={() => setCommentType("RESPUESTA_AGENTE")}
+                  style={{ margin: 0, width: 12, height: 12 }}
+                />
+                <span>Respuesta al cliente</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 11 }}>
+                <input
+                  type="radio"
+                  name="commentType"
+                  checked={commentType === "NOTA_INTERNA"}
+                  onChange={() => setCommentType("NOTA_INTERNA")}
+                  style={{ margin: 0, width: 12, height: 12 }}
+                />
+                <span>Nota interna</span>
+              </label>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <TemplateSelector
+              context={wildcardContext}
+              onSelect={handleTemplateSelect}
+              buttonLabel="Plantilla"
+              buttonStyle={{ padding: "3px 8px", fontSize: 10 }}
+            />
+            <button className="btn" style={{ padding: "3px 8px", fontSize: 10 }} onClick={onClose}>Cancelar</button>
+            <button
+              className="btn primary"
+              style={{ padding: "3px 10px", fontSize: 10 }}
+              onClick={() => onSave(content, commentType)}
+              disabled={!content.trim() || content === "<p></p>"}
+            >
+              {isEditing ? "Guardar" : "Agregar"}
+            </button>
           </div>
         </div>
 
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          {/* Main content area */}
+          {/* Main content area - maximum space for editor */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", gap: 20 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-                    <input
-                      type="radio"
-                      name="commentType"
-                      checked={commentType === "RESPUESTA_AGENTE"}
-                      onChange={() => setCommentType("RESPUESTA_AGENTE")}
-                    />
-                    <span>Respuesta al cliente</span>
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-                    <input
-                      type="radio"
-                      name="commentType"
-                      checked={commentType === "NOTA_INTERNA"}
-                      onChange={() => setCommentType("NOTA_INTERNA")}
-                    />
-                    <span>Nota interna</span>
-                  </label>
-                </div>
-                <TemplateSelector
-                  context={wildcardContext}
-                  onSelect={handleTemplateSelect}
-                  buttonLabel="Usar Plantilla"
-                  buttonStyle={{ padding: "6px 12px", fontSize: 12 }}
-                />
-              </div>
-            </div>
-
-            <div style={{ flex: 1, padding: 20, overflow: "auto", minHeight: "400px" }}>
+            <div style={{ flex: 1, padding: "8px 12px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <TipTapEditor content={content} onChange={setContent} />
             </div>
           </div>
 
-          {/* Right sidebar - Agents */}
-          <div style={{ width: 240, borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "#FAFAFA" }}>
-            {/* Involved agents */}
-            <div style={{ padding: 12, borderBottom: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--muted)" }}>AGENTES INVOLUCRADOS</div>
-              {tarea?.cliente?.jefeProyecto1 && (
-                <div style={{ fontSize: 11, padding: "4px 0", display: "flex", justifyContent: "space-between" }}>
-                  <span>{tarea.cliente.jefeProyecto1}</span>
-                  <span style={{ color: "var(--muted)", fontSize: 10 }}>JP1</span>
-                </div>
-              )}
-              {tarea?.cliente?.jefeProyecto2 && (
-                <div style={{ fontSize: 11, padding: "4px 0", display: "flex", justifyContent: "space-between" }}>
-                  <span>{tarea.cliente.jefeProyecto2}</span>
-                  <span style={{ color: "var(--muted)", fontSize: 10 }}>JP2</span>
-                </div>
-              )}
-              {involvedAgents.map((a) => (
-                <div key={a.id} style={{ fontSize: 11, padding: "4px 0", display: "flex", justifyContent: "space-between" }}>
-                  <span>{a.nombre}</span>
-                  <span style={{ color: "var(--muted)", fontSize: 10 }}>{a.reason}</span>
-                </div>
-              ))}
-              {!tarea?.cliente?.jefeProyecto1 && !tarea?.cliente?.jefeProyecto2 && involvedAgents.length === 0 && (
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Sin agentes involucrados</div>
-              )}
+          {/* Right sidebar - Agents - compact and scrollable */}
+          <div style={{ width: 200, borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "#FAFAFA", flexShrink: 0 }}>
+            {/* Involved agents - compact list */}
+            <div style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Involucrados</div>
+              <div style={{ maxHeight: 100, overflow: "auto" }}>
+                {involvedAgents.length > 0 ? (
+                  involvedAgents.map((a) => (
+                    <div key={a.id} style={{ fontSize: 10, padding: "2px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }} title={a.nombre}>{a.nombre}</span>
+                      <span style={{ color: "var(--muted)", fontSize: 9, flexShrink: 0 }}>{a.reason}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>Sin agentes involucrados</div>
+                )}
+              </div>
             </div>
 
-            {/* Add agents to notify */}
-            <div style={{ flex: 1, padding: 12, overflow: "auto" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--muted)" }}>NOTIFICAR TAMBIÉN A</div>
+            {/* Add agents to notify - only show those not already involved */}
+            <div style={{ flex: 1, padding: "6px 8px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div style={{ fontSize: 10, fontWeight: 600, marginBottom: 4, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Notificar también</div>
               {availableAgents.length > 0 ? (
                 <select
                   multiple
                   className="input"
                   style={{
+                    flex: 1,
                     width: "100%",
-                    height: "120px",
-                    fontSize: "11px",
-                    padding: "4px",
+                    fontSize: "10px",
+                    padding: "2px",
                     border: "1px solid var(--border)",
-                    borderRadius: "4px",
-                    background: "white"
+                    borderRadius: "3px",
+                    background: "white",
+                    minHeight: 60
                   }}
                   value={selectedNotifyAgents}
                   onChange={(e) => {
@@ -853,38 +885,21 @@ function CommentEditorModal({
                   }}
                 >
                   {availableAgents.map((a) => (
-                    <option key={a.id} value={a.id}>
+                    <option key={a.id} value={a.id} style={{ padding: "1px 2px" }}>
                       {a.nombre}
                     </option>
                   ))}
                 </select>
               ) : (
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Todos los agentes ya están involucrados</div>
+                <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>Todos ya involucrados</div>
               )}
               {selectedNotifyAgents.length > 0 && (
-                <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>
-                  {selectedNotifyAgents.length} agente{selectedNotifyAgents.length !== 1 ? 's' : ''} seleccionado{selectedNotifyAgents.length !== 1 ? 's' : ''}
+                <div style={{ fontSize: 9, color: "#3B82F6", marginTop: 2, flexShrink: 0 }}>
+                  +{selectedNotifyAgents.length} seleccionado{selectedNotifyAgents.length !== 1 ? 's' : ''}
                 </div>
               )}
             </div>
-
-            {selectedNotifyAgents.length > 0 && (
-              <div style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", fontSize: 11, color: "#3B82F6" }}>
-                {selectedNotifyAgents.length} agente(s) seleccionado(s)
-              </div>
-            )}
           </div>
-        </div>
-
-        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button className="btn" onClick={onClose}>Cancelar</button>
-          <button
-            className="btn primary"
-             onClick={() => onSave(content, commentType)}
-            disabled={!content.trim() || content === "<p></p>"}
-          >
-            {isEditing ? "Guardar" : "Agregar"}
-          </button>
         </div>
       </div>
     </div>
@@ -906,7 +921,7 @@ export default function TareaFicha() {
   const [estados, setEstados] = React.useState<EstadoTarea[]>([]);
   const [prioridades, setPrioridades] = React.useState<PrioridadTarea[]>([]);
   const [tipos, setTipos] = React.useState<TipoTarea[]>([]);
-  const [modulos, setModulos] = React.useState<Modulo[]>([]);
+  const [modulos, setModulos] = React.useState<ModuloLookup[]>([]);
   const [releases, setReleases] = React.useState<Release[]>([]);
 
   // Edit mode
@@ -930,6 +945,7 @@ export default function TareaFicha() {
    const [submittingComment, setSubmittingComment] = React.useState(false);
   const [commentsOrderAsc, setCommentsOrderAsc] = React.useState(false); // false = newest first (DESC)
   const [replyToEventId, setReplyToEventId] = React.useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = React.useState<string | null>(null); // ID of comment being edited
 
   async function loadLookups() {
     try {
@@ -938,8 +954,8 @@ export default function TareaFicha() {
         listEstadosTarea(),
         listPrioridadesTarea(),
         listTiposTarea(),
-        listModulos(),
-        listReleases(),
+        listModulosLookup(),
+        listReleasesLookup(),
       ]);
       setAgentes(agentesData);
       setEstados(estadosData);
@@ -973,6 +989,18 @@ export default function TareaFicha() {
         hotfixId: tareaData.hotfixId || "",
         reproducido: tareaData.reproducido,
       });
+      // Auto-select first comment (oldest by date)
+      const articleTypes = ["MENSAJE_CLIENTE", "RESPUESTA_AGENTE", "NOTA_INTERNA"];
+      const articleComments = timelineData.filter((e: TareaEvento) => {
+        const normalizedTipo = (e.tipo || "").trim().toUpperCase().replace(/\s+/g, "_");
+        return articleTypes.includes(normalizedTipo) || articleTypes.includes(e.tipo || "");
+      });
+      if (articleComments.length > 0) {
+        const sorted = [...articleComments].sort((a: TareaEvento, b: TareaEvento) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        setSelectedComment(sorted[0]);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Error al cargar la tarea");
     } finally {
@@ -1062,6 +1090,65 @@ export default function TareaFicha() {
     }
   }
 
+  async function handleUpdateComment(content: string) {
+    if (!id || !editingCommentId || !content.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const updatedTimeline = await updateComentarioTarea(id, editingCommentId, {
+        cuerpo: content.trim(),
+      });
+      setTimeline(updatedTimeline);
+      setShowCommentEditor(false);
+      setEditingCommentId(null);
+      // Update selectedComment with new content
+      const updatedComment = updatedTimeline.find(e => e.id === editingCommentId);
+      if (updatedComment) {
+        setSelectedComment(updatedComment);
+      }
+    } catch (e: any) {
+      alert(e?.message ?? "Error al actualizar comentario");
+    } finally {
+      setSubmittingComment(false);
+    }
+  }
+
+  async function handleDeleteComment(comment: TareaEvento) {
+    if (!id || !comment) return;
+    
+    const confirmDelete = window.confirm(
+      "¿Estás seguro de que deseas eliminar este comentario? Esta acción no se puede deshacer."
+    );
+    if (!confirmDelete) return;
+    
+    try {
+      const updatedTimeline = await deleteComentarioTarea(id, comment.id);
+      setTimeline(updatedTimeline);
+      setSelectedComment(null);
+    } catch (e: any) {
+      alert(e?.message ?? "Error al eliminar comentario");
+    }
+  }
+
+  // Check if a comment can be edited (no newer comments after it)
+  function canEditComment(comment: TareaEvento): boolean {
+    if (!comment) return false;
+    // Only agent comments can be edited
+    const editableTipos = ["RESPUESTA_AGENTE", "NOTA_INTERNA"];
+    if (!editableTipos.includes(comment.tipo)) return false;
+    
+    // Get all article comments
+    const articleTypes = ["MENSAJE_CLIENTE", "RESPUESTA_AGENTE", "NOTA_INTERNA"];
+    const articleComments = timeline.filter(e => articleTypes.includes(e.tipo));
+    
+    // Check if there are any comments created after this one
+    const commentDate = new Date(comment.createdAt).getTime();
+    const hasNewerComments = articleComments.some(e => 
+      e.id !== comment.id && new Date(e.createdAt).getTime() > commentDate
+    );
+    
+    return !hasNewerComments;
+  }
+
   function formatDate(dateStr: string) {
     const d = new Date(dateStr);
     return d.toLocaleString("es-ES", {
@@ -1073,8 +1160,10 @@ export default function TareaFicha() {
     });
   }
 
+  // Only show PRODUCCION releases and hotfixes
+  const produccionReleases = releases.filter((r) => r.rama === "PRODUCCION");
   const selectedRelease = releases.find((r) => r.id === editForm.releaseId);
-  const availableHotfixes = selectedRelease?.hotfixes || [];
+  const availableHotfixes = (selectedRelease?.hotfixes || []).filter((h) => h.rama === "PRODUCCION");
   const isClosed = !!tarea?.closedAt;
 
   // Find current agente from the logged-in user
@@ -1363,6 +1452,18 @@ export default function TareaFicha() {
                             </td>
                             <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", fontSize: 10 }}>
                               {formatDate(evento.createdAt)}
+                              {evento.updatedAt && (
+                                <span style={{ 
+                                  marginLeft: 4,
+                                  fontSize: 8, 
+                                  padding: "1px 3px", 
+                                  backgroundColor: isSelected ? "rgba(255,255,255,0.3)" : "#FEF3C7", 
+                                  color: isSelected ? "#fff" : "#92400E", 
+                                  borderRadius: 2 
+                                }} title={`Editado: ${formatDate(evento.updatedAt)}`}>
+                                  ed.
+                                </span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1384,37 +1485,42 @@ export default function TareaFicha() {
           }}>
             {selectedComment ? (
               <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                {/* Article header - collapsible info */}
-                <div style={{ 
-                  padding: "8px 12px", 
+                {/* Article header - compact info */}
+                <div style={{
+                  padding: "4px 10px",
                   borderBottom: "1px solid var(--border)",
                   background: "var(--bg-secondary)",
                   flexShrink: 0
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span>#{(() => {
                           const idx = chronologicalOrder.findIndex(c => c.id === selectedComment.id);
                           return idx >= 0 ? idx + 1 : "?";
                         })()} — {selectedComment.tipo === "MENSAJE_CLIENTE" ? "Mensaje Cliente" : selectedComment.tipo === "NOTA_INTERNA" ? "Nota Interna" : "Respuesta Agente"}</span>
-                        <span style={{ color: "var(--muted)", fontWeight: 400 }}>— {formatDate(selectedComment.createdAt)}</span>
+                        <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 10 }}>— {formatDate(selectedComment.createdAt)}</span>
+                        {selectedComment.updatedAt && (
+                          <span style={{ fontSize: 9, padding: "1px 4px", backgroundColor: "#FEF3C7", color: "#92400E", borderRadius: 3 }} title={`Editado: ${formatDate(selectedComment.updatedAt)}`}>
+                            editado
+                          </span>
+                        )}
                         {selectedComment.tipo === "NOTA_INTERNA" && (
-                          <span style={{ fontSize: 10, padding: "2px 6px", backgroundColor: "#374151", color: "#fff", borderRadius: 4 }}>
+                          <span style={{ fontSize: 9, padding: "1px 4px", backgroundColor: "#374151", color: "#fff", borderRadius: 3 }}>
                             Interno
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", gap: 16, alignItems: "center" }}>
+                      <div style={{ fontSize: 10, color: "var(--muted)", display: "flex", gap: 12, alignItems: "center" }}>
                         {resolveRelatedTo(selectedComment) && (
                           <span style={{
-                            fontSize: 10,
-                            padding: "2px 6px",
-                            borderRadius: 4,
+                            fontSize: 9,
+                            padding: "1px 4px",
+                            borderRadius: 3,
                             background: "var(--bg-secondary)",
                             color: "var(--accent)",
                           }}>
-                            Relacionado con {resolveRelatedTo(selectedComment)}
+                            Resp. {resolveRelatedTo(selectedComment)}
                           </span>
                         )}
                         <span>
@@ -1427,11 +1533,26 @@ export default function TareaFicha() {
                         )}
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      {!isClosed && selectedComment.tipo !== "MENSAJE_CLIENTE" && (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      {!isClosed && selectedComment.tipo !== "MENSAJE_CLIENTE" && canEditComment(selectedComment) && (
                         <>
-                          <button className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>Editar</button>
-                          <button className="btn" style={{ padding: "4px 10px", fontSize: 11, color: "var(--danger)" }}>Eliminar</button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: "4px 10px", fontSize: 11 }}
+                            onClick={() => {
+                              setEditingCommentId(selectedComment.id);
+                              setShowCommentEditor(true);
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: "4px 10px", fontSize: 11, color: "var(--danger)" }}
+                            onClick={() => handleDeleteComment(selectedComment)}
+                          >
+                            Eliminar
+                          </button>
                         </>
                       )}
                       {!isClosed && (
@@ -1450,37 +1571,37 @@ export default function TareaFicha() {
                   </div>
                 </div>
 
-                {/* Article body - maximum space for content */}
-                <div style={{ 
-                  flex: 1, 
-                  padding: "12px 16px", 
+                {/* Article body - maximum space for content, compact like OTRS */}
+                <div style={{
+                  flex: 1,
+                  padding: "6px 10px",
                   overflow: "auto",
-                  fontSize: 14,
-                  lineHeight: 1.7
+                  fontSize: 12,
+                  lineHeight: 1.4
                 }}>
                   {/* Author avatar/initials */}
-                  <div style={{ display: "flex", gap: 16 }}>
-                    <div style={{ 
-                      width: 40, 
-                      height: 40, 
-                      borderRadius: 4, 
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 3,
                       background: selectedComment.tipo === "MENSAJE_CLIENTE" ? "#FEF3C7" : "#DBEAFE",
                       color: selectedComment.tipo === "MENSAJE_CLIENTE" ? "#92400E" : "#1E40AF",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 14,
+                      fontSize: 11,
                       fontWeight: 600,
                       flexShrink: 0
                     }}>
                       {(() => {
-                        const name = selectedComment.tipo === "MENSAJE_CLIENTE" 
+                        const name = selectedComment.tipo === "MENSAJE_CLIENTE"
                           ? (tarea.cliente?.codigo || "CL")
                           : (agentes.find(a => a.id === selectedComment.creadoPorAgenteId)?.nombre || "AG");
                         return name.substring(0, 2).toUpperCase();
                       })()}
                     </div>
-                    <div style={{ flex: 1, borderLeft: "3px solid var(--border)", paddingLeft: 16 }}>
+                    <div style={{ flex: 1, borderLeft: "2px solid var(--border)", paddingLeft: 10 }}>
                       <div
                         className="comment-content"
                         style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
@@ -1489,34 +1610,56 @@ export default function TareaFicha() {
                     </div>
                   </div>
                   <style>{`
+                    .comment-content {
+                      font-size: 12px;
+                      line-height: 1.4;
+                    }
+                    .comment-content p {
+                      margin: 0 0 6px 0;
+                    }
                     .comment-content img {
                       max-width: 100%;
                       height: auto;
                       display: block;
-                      margin: 8px 0;
+                      margin: 4px 0;
                       border: 1px solid var(--border);
-                      border-radius: 4px;
+                      border-radius: 3px;
                     }
                     .comment-content * {
                       max-width: 100%;
                     }
                     .comment-content table {
                       border-collapse: collapse;
-                      margin: 8px 0;
+                      margin: 4px 0;
                     }
                     .comment-content td, .comment-content th {
                       border: 1px solid var(--border);
-                      padding: 4px 8px;
+                      padding: 2px 6px;
+                      font-size: 11px;
                     }
                     .comment-content pre, .comment-content code {
                       background: var(--bg-secondary);
-                      padding: 2px 6px;
-                      border-radius: 4px;
-                      font-size: 13px;
+                      padding: 1px 4px;
+                      border-radius: 3px;
+                      font-size: 11px;
                     }
                     .comment-content pre {
-                      padding: 12px;
+                      padding: 6px 8px;
                       overflow-x: auto;
+                      margin: 4px 0;
+                    }
+                    .comment-content ul, .comment-content ol {
+                      margin: 4px 0;
+                      padding-left: 20px;
+                    }
+                    .comment-content li {
+                      margin: 2px 0;
+                    }
+                    .comment-content blockquote {
+                      margin: 4px 0;
+                      padding-left: 10px;
+                      border-left: 2px solid var(--border);
+                      color: var(--muted);
                     }
                   `}</style>
                 </div>
@@ -1771,7 +1914,7 @@ export default function TareaFicha() {
                           onChange={(e) => setEditForm({ ...editForm, releaseId: e.target.value, hotfixId: "" })}
                         >
                           <option value="">Sin release</option>
-                          {releases.map((r) => (
+                          {produccionReleases.map((r) => (
                             <option key={r.id} value={r.id}>{r.codigo}</option>
                           ))}
                         </select>
@@ -1880,11 +2023,18 @@ export default function TareaFicha() {
 
       {showCommentEditor && (
         <CommentEditorModal
-          initialContent=""
-          initialType="RESPUESTA_AGENTE"
-          onSave={handleAddComment}
-          onClose={() => setShowCommentEditor(false)}
-          isEditing={false}
+          initialContent={editingCommentId ? (timeline.find(e => e.id === editingCommentId)?.cuerpo || "") : ""}
+          initialType={editingCommentId ? ((timeline.find(e => e.id === editingCommentId)?.tipo as "RESPUESTA_AGENTE" | "NOTA_INTERNA") || "RESPUESTA_AGENTE") : "RESPUESTA_AGENTE"}
+          onSave={editingCommentId 
+            ? (content) => handleUpdateComment(content) 
+            : handleAddComment
+          }
+          onClose={() => {
+            setShowCommentEditor(false);
+            setEditingCommentId(null);
+            setReplyToEventId(null);
+          }}
+          isEditing={!!editingCommentId}
           tarea={tarea}
           agentes={agentes}
           timeline={timeline}
@@ -1894,3 +2044,4 @@ export default function TareaFicha() {
     </div>
   );
 }
+

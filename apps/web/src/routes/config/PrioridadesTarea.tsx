@@ -23,13 +23,16 @@ export default function PrioridadesTarea() {
   const [orden, setOrden] = React.useState(0);
   const [porDefecto, setPorDefecto] = React.useState(false);
   const [color, setColor] = React.useState("");
+  const [activo, setActivo] = React.useState(true);
+  const [replacementId, setReplacementId] = React.useState("");
+  const [showInactive, setShowInactive] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   async function loadData() {
     setLoading(true);
     try {
-      const data = await listPrioridadesTarea();
+      const data = await listPrioridadesTarea({ includeInactive: showInactive });
       setItems(data);
     } catch (e: any) {
       console.error("Error loading prioridades tarea:", e);
@@ -40,16 +43,19 @@ export default function PrioridadesTarea() {
 
   React.useEffect(() => {
     loadData();
-  }, []);
+  }, [showInactive]);
 
-  function resetForm() {
+  function resetForm(options?: { keepOpen?: boolean }) {
+    const keepOpen = options?.keepOpen ?? false;
     setCodigo("");
     setDescripcion("");
     setOrden(0);
     setPorDefecto(false);
     setColor("");
+    setActivo(true);
+    setReplacementId("");
     setEditingId(null);
-    setShowForm(false);
+    setShowForm(keepOpen);
     setError(null);
   }
 
@@ -60,6 +66,8 @@ export default function PrioridadesTarea() {
     setOrden(item.orden);
     setPorDefecto(item.porDefecto);
     setColor(item.color || "");
+    setActivo(item.activo !== false);
+    setReplacementId("");
     setShowForm(true);
     setError(null);
   }
@@ -74,13 +82,18 @@ export default function PrioridadesTarea() {
     setError(null);
     try {
       if (editingId) {
+        if (!activo && !replacementId) {
+          setError("Debe seleccionar un reemplazo para desactivar.");
+          return;
+        }
         await updatePrioridadTarea(editingId, {
           codigo: codigo.trim(),
           descripcion: descripcion.trim() || undefined,
           orden,
           porDefecto,
           color: color.trim() || undefined,
-        });
+          activo,
+        }, replacementId || undefined);
       } else {
         await createPrioridadTarea({
           codigo: codigo.trim(),
@@ -88,9 +101,10 @@ export default function PrioridadesTarea() {
           orden,
           porDefecto,
           color: color.trim() || undefined,
+          activo,
         });
       }
-      resetForm();
+      resetForm(editingId ? undefined : { keepOpen: true });
       await loadData();
     } catch (err: any) {
       setError(err?.message ?? "Error al guardar");
@@ -99,13 +113,21 @@ export default function PrioridadesTarea() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(item: PrioridadTarea) {
     if (!confirm("¿Esta seguro de eliminar este registro?")) return;
     try {
-      await deletePrioridadTarea(id);
+      await deletePrioridadTarea(item.id, replacementId || undefined);
       await loadData();
+      setReplacementId("");
+      setEditingId(null);
     } catch (err: any) {
-      alert(err?.message ?? "Error al eliminar");
+      const message = err?.message ?? "Error al eliminar";
+      if (message.includes("tareas asociadas") || message.includes("reemplazo")) {
+        startEdit(item);
+        setError("Seleccione un reemplazo y vuelva a intentar.");
+        return;
+      }
+      alert(message);
     }
   }
 
@@ -124,11 +146,21 @@ export default function PrioridadesTarea() {
       <div className="card" style={{ padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600 }}>Listado</h2>
-          {!showForm && (
-            <button className="btn primary" onClick={() => setShowForm(true)}>
-              + Nuevo
-            </button>
-          )}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+              />
+              Mostrar desactivados
+            </label>
+            {!showForm && (
+              <button className="btn primary" onClick={() => setShowForm(true)}>
+                + Nuevo
+              </button>
+            )}
+          </div>
         </div>
 
         {showForm && (
@@ -167,6 +199,29 @@ export default function PrioridadesTarea() {
                   min={0}
                 />
               </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+              <div className="field">
+                <div className="label">Estado</div>
+                <select className="input" value={activo ? "ACTIVO" : "DESACTIVADO"} onChange={(e) => setActivo(e.target.value === "ACTIVO")}> 
+                  <option value="ACTIVO">Activo</option>
+                  <option value="DESACTIVADO">Desactivado</option>
+                </select>
+              </div>
+              {editingId && (
+                <div className="field">
+                  <div className="label">Reasignar tareas a</div>
+                  <select className="input" value={replacementId} onChange={(e) => setReplacementId(e.target.value)}>
+                    <option value="">-- Seleccionar --</option>
+                    {items.filter((i) => i.id !== editingId && i.activo !== false).map((i) => (
+                      <option key={i.id} value={i.id}>{i.codigo}</option>
+                    ))}
+                  </select>
+                  <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>
+                    Requerido si hay tareas asociadas.
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ marginBottom: 12 }}>
               <div className="field">
@@ -244,10 +299,11 @@ export default function PrioridadesTarea() {
                 <tr>
                   <th style={{ width: 80 }}>Orden</th>
                   <th style={{ width: 150 }}>Codigo</th>
-                  <th>Descripcion</th>
-                  <th style={{ width: 80 }}>Color</th>
-                  <th style={{ width: 100 }}>Por Defecto</th>
-                  <th style={{ width: 120 }}>Acciones</th>
+                <th>Descripcion</th>
+                <th style={{ width: 80 }}>Color</th>
+                <th style={{ width: 120 }}>Estado</th>
+                <th style={{ width: 100 }}>Por Defecto</th>
+                <th style={{ width: 120 }}>Acciones</th>
                 </tr>
               </thead>
             <tbody>
@@ -256,9 +312,9 @@ export default function PrioridadesTarea() {
                   <td>{item.orden}</td>
                   <td style={{ fontWeight: 500 }}>{item.codigo}</td>
                   <td>{item.descripcion || "-"}</td>
-                  <td>
-                    {item.color && (
-                      <div
+                <td>
+                  {item.color && (
+                    <div
                         style={{
                           width: 24,
                           height: 24,
@@ -268,11 +324,12 @@ export default function PrioridadesTarea() {
                         }}
                         title={item.color}
                       />
-                    )}
-                  </td>
-                  <td>
-                    {item.porDefecto && (
-                      <span style={{ color: "#059669", fontWeight: 500 }}>Si</span>
+                  )}
+                </td>
+                <td>{item.activo !== false ? "Activo" : "Desactivado"}</td>
+                <td>
+                  {item.porDefecto && (
+                    <span style={{ color: "#059669", fontWeight: 500 }}>Si</span>
                     )}
                   </td>
                   <td>
@@ -283,7 +340,7 @@ export default function PrioridadesTarea() {
                       <button
                         className="btn"
                         style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDelete(item)}
                       >
                         Eliminar
                       </button>

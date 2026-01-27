@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards, BadRequestException, Req, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 import { PrismaService } from "../prisma.service";
 import { JwtAuthGuard } from "../auth/guards";
@@ -27,6 +27,9 @@ class UpdateClienteDto {
 
   @IsOptional() @IsString()
   licenciaTipo?: "AAM" | "PPU" | null;
+
+  @IsOptional() @IsBoolean()
+  activo?: boolean;
 }
 
 
@@ -242,8 +245,10 @@ export class ClientesAdminController {
 
   @Get()
   @RequireAnyPermission(PermisoCodigo.CONFIG_CLIENTES, PermisoCodigo.CONFIG_CLIENTES_READ)
-  async list() {
+  async list(@Query("includeInactive") includeInactive?: string) {
+    const include = includeInactive === "1" || includeInactive === "true";
     const clientes = await this.prisma.cliente.findMany({
+      where: include ? {} : { activo: true },
       select: {
         id: true,
         codigo: true,
@@ -251,6 +256,7 @@ export class ClientesAdminController {
         logotipo: true,
         jefeProyecto1: true,
         jefeProyecto2: true,
+        activo: true,
         createdAt: true,
         updatedAt: true,
         releasesPlan: {
@@ -279,6 +285,7 @@ export class ClientesAdminController {
       logotipo: c.logotipo,
       jefeProyecto1: c.jefeProyecto1,
       jefeProyecto2: c.jefeProyecto2,
+      activo: c.activo,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
       currentRelease: c.releasesPlan[0]
@@ -294,7 +301,7 @@ export class ClientesAdminController {
   async getOneByCodigo(@Param("codigo") codigo: string) {
     return this.prisma.cliente.findUnique({
       where: { codigo },
-      select: { id: true, codigo: true, descripcion: true, logotipo: true, jefeProyecto1: true, jefeProyecto2: true, licenciaTipo: true, createdAt: true, updatedAt: true },
+      select: { id: true, codigo: true, descripcion: true, logotipo: true, jefeProyecto1: true, jefeProyecto2: true, licenciaTipo: true, activo: true, createdAt: true, updatedAt: true },
     });
   }
 
@@ -304,7 +311,7 @@ export class ClientesAdminController {
   async getOne(@Param("id") id: string) {
     return this.prisma.cliente.findUnique({
       where: { id },
-      select: { id: true, codigo: true, descripcion: true, logotipo: true, jefeProyecto1: true, jefeProyecto2: true, licenciaTipo: true, createdAt: true, updatedAt: true },
+      select: { id: true, codigo: true, descripcion: true, logotipo: true, jefeProyecto1: true, jefeProyecto2: true, licenciaTipo: true, activo: true, createdAt: true, updatedAt: true },
     });
   }
 
@@ -409,13 +416,30 @@ export class ClientesAdminController {
         jefeProyecto1: dto.jefeProyecto1 ?? null,
         jefeProyecto2: dto.jefeProyecto2 ?? null,
         licenciaTipo: dto.licenciaTipo ?? null,
+        activo: dto.activo ?? true,
       },
     });
   }
 
   @Put(":id")
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
-  async update(@Param("id") id: string, @Body() dto: UpdateClienteDto) {
+  async update(@Param("id") id: string, @Body() dto: UpdateClienteDto, @Query("replacementId") replacementId?: string) {
+    if (dto.activo === false) {
+      const inUse = await this.prisma.tarea.count({ where: { clienteId: id } });
+      if (inUse > 0 && !replacementId) {
+        throw new BadRequestException("Este cliente tiene tareas asociadas. Debe reasignarlas antes de desactivar.");
+      }
+      if (replacementId) {
+        if (replacementId === id) {
+          throw new BadRequestException("El reemplazo debe ser distinto al registro a desactivar.");
+        }
+        const replacementExists = await this.prisma.cliente.findFirst({ where: { id: replacementId, activo: true } });
+        if (!replacementExists) {
+          throw new BadRequestException("El reemplazo debe ser un cliente activo.");
+        }
+        await this.prisma.tarea.updateMany({ where: { clienteId: id }, data: { clienteId: replacementId } });
+      }
+    }
     return this.prisma.cliente.update({
       where: { id },
       data: {
@@ -425,13 +449,28 @@ export class ClientesAdminController {
         jefeProyecto1: dto.jefeProyecto1,
         jefeProyecto2: dto.jefeProyecto2,
         licenciaTipo: dto.licenciaTipo,
+        ...(dto.activo === undefined ? {} : { activo: dto.activo }),
       },
     });
   }
 
   @Delete(":id")
   @RequirePermissions(PermisoCodigo.CONFIG_CLIENTES)
-  async remove(@Param("id") id: string) {
+  async remove(@Param("id") id: string, @Query("replacementId") replacementId?: string) {
+    const inUse = await this.prisma.tarea.count({ where: { clienteId: id } });
+    if (inUse > 0 && !replacementId) {
+      throw new BadRequestException("Este cliente tiene tareas asociadas. Debe reasignarlas antes de eliminar.");
+    }
+    if (replacementId) {
+      if (replacementId === id) {
+        throw new BadRequestException("El reemplazo debe ser distinto al registro a eliminar.");
+      }
+      const replacementExists = await this.prisma.cliente.findFirst({ where: { id: replacementId, activo: true } });
+      if (!replacementExists) {
+        throw new BadRequestException("El reemplazo debe ser un cliente activo.");
+      }
+      await this.prisma.tarea.updateMany({ where: { clienteId: id }, data: { clienteId: replacementId } });
+    }
     await this.prisma.cliente.delete({ where: { id } });
     return { ok: true };
   }

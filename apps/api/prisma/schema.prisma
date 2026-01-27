@@ -221,6 +221,7 @@ model TareaEvento {
   visibleEnTimeline  Boolean         @default(true)
   visibleParaCliente Boolean         @default(false)
   createdAt          DateTime        @default(now())
+  updatedAt          DateTime?
   creadoPorAgente    Agente?         @relation("EventoCreadoPorAgente", fields: [creadoPorAgenteId], references: [id], onDelete: Restrict)
   creadoPorCliente   ClienteUsuario? @relation("EventoCreadoPorCliente", fields: [creadoPorClienteId], references: [id], onDelete: Restrict)
   tarea              Tarea           @relation(fields: [tareaId], references: [id], onDelete: Cascade)
@@ -384,6 +385,7 @@ model ConfiguracionMail {
   azureClientSecret String?
   azureAccessToken  String?
   azureTokenExpiry  DateTime?
+  firmaHtml         String?       @db.Text
   activo            Boolean       @default(true)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -505,4 +507,20 @@ model Plantilla {
   activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Dashboard configuration - stores widget layout and filters
+// isDefault=true means this is the shared config all agents see
+// When an admin saves, it updates the default config
+model DashboardConfig {
+  id            String   @id @default(uuid()) @db.Uuid
+  nombre        String   @db.VarChar(100)
+  isDefault     Boolean  @default(false)
+  // JSON structure for widget layout: { widgets: [{ id, type, position: {x,y,w,h}, filters: {...} }] }
+  layout        Json
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([isDefault], map: "unique_default_dashboard")
 }

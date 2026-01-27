@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import {
   listTareas,
-  listClientes,
+  listClientesLookup,
+  ClienteLookup,
   listAgentes,
   listEstadosTarea,
   listPrioridadesTarea,
   Tarea,
-  Cliente,
   Agente,
   EstadoTarea,
   PrioridadTarea,
@@ -88,7 +88,7 @@ export default function Tareas() {
   const [error, setError] = React.useState<string | null>(null);
 
   // Filters
-  const [clientes, setClientes] = React.useState<Cliente[]>([]);
+  const [clientes, setClientes] = React.useState<ClienteLookup[]>([]);
   const [agentes, setAgentes] = React.useState<Agente[]>([]);
   const [estados, setEstados] = React.useState<EstadoTarea[]>([]);
   const [prioridades, setPrioridades] = React.useState<PrioridadTarea[]>([]);
@@ -102,7 +102,7 @@ export default function Tareas() {
   async function loadLookups() {
     try {
       const [clientesData, agentesData, estadosData, prioridadesData] = await Promise.all([
-        listClientes(),
+        listClientesLookup(),
         listAgentes(),
         listEstadosTarea(),
         listPrioridadesTarea(),

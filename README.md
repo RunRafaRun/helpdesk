@@ -45,7 +45,9 @@ docker compose -f infra/docker/compose.yml up --build
 - Notificaciones masivas con programacion
 - Configuracion de email (SMTP/Azure OAuth)
 - Lookup tables con colores (tipos, estados, prioridades)
-- Dashboard con estadisticas y colores dinamicos
+- Dashboard con estadisticas y colores dinamicos (personalizable por admin)
 - Controles de integridad de datos (releases/hotfixes)
 - Estados sin iconos para apariencia mas profesional
 - Soporte UTF-8 completo en base de datos
+- Endpoints de lookup sin permisos para dropdowns (agentes pueden crear tareas)
+- Plantillas de texto reutilizables con wildcards

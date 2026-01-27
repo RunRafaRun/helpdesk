@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import {
-  listClientes,
+  listClientesLookup,
   listRoles,
   sendNotificacion,
   listNotificaciones,
@@ -320,7 +320,7 @@ export default function NotificacionesMasivas() {
     setLoading(true);
     try {
       const [clientesData, rolesData, historialData] = await Promise.all([
-        listClientes(),
+        listClientesLookup(),
         listRoles(),
         listNotificaciones(),
       ]);

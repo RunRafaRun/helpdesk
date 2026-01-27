@@ -195,11 +195,28 @@ export interface DashboardStats {
     abiertas: number;
     cerradas: number;
     sinAsignar: number;
+    pendientes: number;
   };
   byEstado: Array<{ estado: { codigo: string; id: string | null }; count: number }>;
   byTipo: Array<{ tipo: { codigo: string; id: string | null }; count: number }>;
   byCliente: Array<{ cliente: { codigo: string; descripcion?: string; id: string | null }; count: number }>;
   byPrioridad: Array<{ prioridad: { codigo: string; id: string | null }; count: number }>;
+  byPrioridadPendientes: Array<{ prioridad: { codigo: string; id: string | null }; count: number }>;
+  ticketsNuevosPendientes: Array<{
+    id: string;
+    numero: string;
+    titulo: string;
+    createdAt: string;
+    cliente: { codigo: string };
+    estado: { codigo: string } | null;
+    prioridad: { codigo: string; color?: string | null };
+  }>;
+  resumenClienteEstado: Array<{
+    cliente: { id: string; codigo: string };
+    byEstado: Record<string, number>;
+    total: number;
+  }>;
+  estados: Array<{ id: string; codigo: string; orden: number }>;
   latestComments: Array<{
     id: string;
     tipo: string;
@@ -578,6 +595,7 @@ export type TareaEvento = {
   visibleEnTimeline: boolean;
   visibleParaCliente: boolean;
   createdAt: string;
+  updatedAt?: string | null;
 };
 
 export type Tarea = {
@@ -703,6 +721,14 @@ export async function addComentarioTarea(id: string, input: {
   return request<TareaEvento[]>(`/tareas/${id}/comentarios`, { method: "POST", body: JSON.stringify(apiInput) });
 }
 
+export async function updateComentarioTarea(tareaId: string, eventoId: string, input: { cuerpo: string }) {
+  return request<TareaEvento[]>(`/tareas/${tareaId}/comentarios/${eventoId}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export async function deleteComentarioTarea(tareaId: string, eventoId: string) {
+  return request<TareaEvento[]>(`/tareas/${tareaId}/comentarios/${eventoId}`, { method: "DELETE" });
+}
+
 // Lookup endpoints - TipoTarea CRUD
 export async function listTiposTarea(opts?: { includeInactive?: boolean }) {
   const qs = opts?.includeInactive ? "?includeInactive=1" : "";
@@ -763,6 +789,35 @@ export async function deletePrioridadTarea(id: string, replacementId?: string) {
   return request<void>(`/admin/lookup/prioridades-tarea/${id}${qs}`, { method: "DELETE" });
 }
 
+// ==================== LOOKUP ENDPOINTS (no permissions required) ====================
+// These are read-only endpoints for dropdowns, available to any authenticated user
+
+export type ClienteLookup = {
+  id: string;
+  codigo: string;
+  descripcion?: string | null;
+  jefeProyecto1?: string | null;
+  jefeProyecto2?: string | null;
+};
+
+export async function listClientesLookup() {
+  return request<ClienteLookup[]>("/admin/lookup/clientes");
+}
+
+export type ModuloLookup = {
+  id: string;
+  codigo: string;
+  descripcion?: string | null;
+};
+
+export async function listModulosLookup() {
+  return request<ModuloLookup[]>("/admin/lookup/modulos");
+}
+
+export async function listReleasesLookup() {
+  return request<Release[]>("/admin/lookup/releases");
+}
+
 // Plantillas (Templates)
 export type Plantilla = {
   id: string;
@@ -812,4 +867,56 @@ export async function updatePlantilla(id: string, input: {
 
 export async function deletePlantilla(id: string) {
   return request<void>(`/admin/plantillas/${id}`, { method: "DELETE" });
+}
+
+// Dashboard Configuration
+export type WidgetType = 
+  | "releaseStatus"
+  | "sinAsignar" 
+  | "prioridadPendientes"
+  | "ticketsNuevosPendientes"
+  | "resumenClienteEstado"
+  | "ultimosComentarios";
+
+export interface WidgetPosition {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface WidgetConfig {
+  id: string;
+  type: WidgetType;
+  position: WidgetPosition;
+  visible: boolean;
+  filters?: Record<string, unknown>;
+}
+
+export interface DashboardLayout {
+  widgets: WidgetConfig[];
+}
+
+export interface DashboardConfigResponse {
+  id: string;
+  nombre: string;
+  layout: DashboardLayout;
+  updatedAt: string;
+}
+
+export async function getDashboardConfig() {
+  return request<DashboardConfigResponse>("/admin/dashboard/config");
+}
+
+export async function updateDashboardConfig(layout: DashboardLayout, nombre?: string) {
+  return request<DashboardConfigResponse>("/admin/dashboard/config", {
+    method: "PUT",
+    body: JSON.stringify({ layout, nombre }),
+  });
+}
+
+export async function resetDashboardConfig() {
+  return request<DashboardConfigResponse>("/admin/dashboard/config/reset", {
+    method: "PUT",
+  });
 }

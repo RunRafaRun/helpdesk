@@ -7,16 +7,18 @@ export default function Modulos() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  const [form, setForm] = React.useState({ codigo: "", descripcion: "" });
+  const [form, setForm] = React.useState({ codigo: "", descripcion: "", activo: true });
   const [saving, setSaving] = React.useState(false);
   const [showForm, setShowForm] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [replacementId, setReplacementId] = React.useState("");
+  const [showInactive, setShowInactive] = React.useState(false);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      setItems(await listModulos());
+      setItems(await listModulos({ includeInactive: showInactive }));
     } catch (e: any) {
       setError(e?.message ?? "Error");
     } finally {
@@ -24,18 +26,20 @@ export default function Modulos() {
     }
   }
 
-  React.useEffect(() => { load(); }, []);
+  React.useEffect(() => { load(); }, [showInactive]);
 
   function resetForm() {
-    setForm({ codigo: "", descripcion: "" });
+    setForm({ codigo: "", descripcion: "", activo: true });
     setEditingId(null);
+    setReplacementId("");
     setShowForm(false);
     setError(null);
   }
 
   function startEdit(item: any) {
     setEditingId(item.id);
-    setForm({ codigo: item.codigo, descripcion: item.descripcion || "" });
+    setForm({ codigo: item.codigo, descripcion: item.descripcion || "", activo: item.activo !== false });
+    setReplacementId("");
     setShowForm(true);
     setError(null);
   }
@@ -50,18 +54,24 @@ export default function Modulos() {
     setError(null);
     try {
       if (editingId) {
+        if (!form.activo && !replacementId) {
+          setError("Debe seleccionar un reemplazo para desactivar.");
+          return;
+        }
         await updateModulo(editingId, {
           codigo: form.codigo.trim(),
           descripcion: form.descripcion.trim() || undefined,
-        });
+          activo: form.activo,
+        }, replacementId || undefined);
       } else {
         await createModulo({
           codigo: form.codigo.trim(),
           descripcion: form.descripcion.trim() || undefined,
+          activo: form.activo,
         });
       }
-      resetForm();
-      await load();
+       resetForm();
+       await load();
     } catch (e: any) {
       setError(e?.message ?? "Error");
     } finally {
@@ -69,13 +79,21 @@ export default function Modulos() {
     }
   }
 
-  async function onDelete(id: string) {
+  async function onDelete(item: any) {
     if (!confirm("¿Eliminar módulo?")) return;
     try {
-      await deleteModulo(id);
+      await deleteModulo(item.id, replacementId || undefined);
       await load();
+      setReplacementId("");
+      setEditingId(null);
     } catch (e: any) {
-      alert(e?.message ?? "Error");
+      const message = e?.message ?? "Error";
+      if (message.includes("tareas asociadas") || message.includes("reemplazo")) {
+        startEdit(item);
+        setError("Seleccione un reemplazo y vuelva a intentar.");
+        return;
+      }
+      alert(message);
     }
   }
 
@@ -95,11 +113,21 @@ return (
     <div className="card" style={{ padding: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h2 style={{ fontSize: 18, fontWeight: 600 }}>Gestión de Módulos</h2>
-        {!showForm && (
-          <button className="btn primary" onClick={() => setShowForm(true)}>
-            + Nuevo
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+            Mostrar desactivados
+          </label>
+          {!showForm && (
+            <button className="btn primary" onClick={() => setShowForm(true)}>
+              + Nuevo
+            </button>
+          )}
+        </div>
       </div>
 
       {showForm && (
@@ -129,6 +157,29 @@ return (
               />
             </div>
           </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+            <div className="field">
+              <div className="label">Estado</div>
+              <select className="input" value={form.activo ? "ACTIVO" : "DESACTIVADO"} onChange={(e) => setForm({ ...form, activo: e.target.value === "ACTIVO" })}>
+                <option value="ACTIVO">Activo</option>
+                <option value="DESACTIVADO">Desactivado</option>
+              </select>
+            </div>
+            {editingId && (
+              <div className="field">
+                <div className="label">Reasignar tareas a</div>
+                <select className="input" value={replacementId} onChange={(e) => setReplacementId(e.target.value)}>
+                  <option value="">-- Seleccionar --</option>
+                  {items.filter((i) => i.id !== editingId && i.activo !== false).map((i) => (
+                    <option key={i.id} value={i.id}>{i.codigo}</option>
+                  ))}
+                </select>
+                <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>
+                  Requerido si hay tareas asociadas.
+                </div>
+              </div>
+            )}
+          </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="submit" className="btn primary" disabled={saving}>
               {saving ? "Guardando..." : editingId ? "Guardar" : "Crear"}
@@ -155,6 +206,7 @@ return (
             <tr>
               <th>Código</th>
               <th>Descripción</th>
+              <th>Estado</th>
               <th />
             </tr>
           </thead>
@@ -163,6 +215,7 @@ return (
               <tr key={m.id}>
                 <td>{m.codigo}</td>
                 <td>{m.descripcion ?? "-"}</td>
+                <td>{m.activo !== false ? "Activo" : "Desactivado"}</td>
                 <td style={{ width: 180 }}>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => startEdit(m)}>
@@ -171,7 +224,7 @@ return (
                     <button
                       className="btn"
                       style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
-                      onClick={() => onDelete(m.id)}
+                      onClick={() => onDelete(m)}
                     >
                       Eliminar
                     </button>

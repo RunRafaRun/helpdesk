@@ -2,16 +2,16 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createTarea,
-  listClientes,
   listUnidades,
-  listModulos,
   listTiposTarea,
   listPrioridadesTarea,
   listEstadosTarea,
-  listReleases,
   getClienteLatestReleasePlan,
-  Cliente,
-  Modulo,
+  listClientesLookup,
+  listModulosLookup,
+  listReleasesLookup,
+  ClienteLookup,
+  ModuloLookup,
   TipoTarea,
   PrioridadTarea,
   EstadoTarea,
@@ -19,6 +19,7 @@ import {
   Hotfix,
 } from "../lib/api";
 import TipTapEditor from "../components/TipTapEditor";
+import { useAuth } from "../lib/auth";
 
 
 
@@ -31,10 +32,11 @@ type UnidadComercial = {
 
 export default function NuevaTarea() {
   const navigate = useNavigate();
+  const { me } = useAuth();
 
-  const [clientes, setClientes] = React.useState<Cliente[]>([]);
+  const [clientes, setClientes] = React.useState<ClienteLookup[]>([]);
   const [unidades, setUnidades] = React.useState<UnidadComercial[]>([]);
-  const [modulos, setModulos] = React.useState<Modulo[]>([]);
+  const [modulos, setModulos] = React.useState<ModuloLookup[]>([]);
   const [tipos, setTipos] = React.useState<TipoTarea[]>([]);
   const [prioridades, setPrioridades] = React.useState<PrioridadTarea[]>([]);
   const [estados, setEstados] = React.useState<EstadoTarea[]>([]);
@@ -61,22 +63,43 @@ export default function NuevaTarea() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Group clients: "Mis clientes" (where current agent is JP1 or JP2) first, then "Resto Clientes"
+  const { misClientes, restoClientes } = React.useMemo(() => {
+    if (!me?.usuario) {
+      return { misClientes: [], restoClientes: clientes };
+    }
+    const currentUsuario = me.usuario.toLowerCase();
+    const mis: ClienteLookup[] = [];
+    const resto: ClienteLookup[] = [];
+    
+    for (const c of clientes) {
+      const jp1 = c.jefeProyecto1?.toLowerCase();
+      const jp2 = c.jefeProyecto2?.toLowerCase();
+      if (jp1 === currentUsuario || jp2 === currentUsuario) {
+        mis.push(c);
+      } else {
+        resto.push(c);
+      }
+    }
+    return { misClientes: mis, restoClientes: resto };
+  }, [clientes, me]);
+
   async function loadLookups() {
     try {
       const [clientesData, modulosData, tiposData, prioridadesData, estadosData, releasesData] = await Promise.all([
-        listClientes(),
-        listModulos(),
+        listClientesLookup(),
+        listModulosLookup(),
         listTiposTarea(),
         listPrioridadesTarea(),
         listEstadosTarea(),
-        listReleases(),
+        listReleasesLookup(),
       ]);
       setClientes(clientesData);
       setModulos(modulosData);
       setTipos(tiposData);
       setPrioridades(prioridadesData);
       setEstados(estadosData);
-      setReleases(releasesData);
+      setReleases(releasesData.filter((r) => r.rama === "PRODUCCION"));
 
       // Set default values from lookups (porDefecto = true)
       const defaultTipo = tiposData.find((t) => t.porDefecto);
@@ -136,10 +159,10 @@ export default function NuevaTarea() {
           releaseId: latestPlan.releaseId,
           hotfixId: latestPlan.hotfixId || "",
         }));
-        // Load hotfixes for this release
+        // Load hotfixes for this release (only PRODUCCION)
         const release = releases.find((r) => r.id === latestPlan.releaseId);
         if (release?.hotfixes) {
-          setHotfixes(release.hotfixes);
+          setHotfixes(release.hotfixes.filter((h) => h.rama === "PRODUCCION"));
         }
       } else {
         setForm((prev) => ({ ...prev, releaseId: "", hotfixId: "" }));
@@ -161,12 +184,12 @@ export default function NuevaTarea() {
     loadLatestReleasePlan(form.clienteCodigo);
   }, [form.clienteCodigo, clientes]);
 
-  // Update hotfixes when release changes
+  // Update hotfixes when release changes (only PRODUCCION)
   React.useEffect(() => {
     if (form.releaseId) {
       const release = releases.find((r) => r.id === form.releaseId);
       if (release?.hotfixes) {
-        setHotfixes(release.hotfixes);
+        setHotfixes(release.hotfixes.filter((h) => h.rama === "PRODUCCION"));
       } else {
         setHotfixes([]);
       }
@@ -294,11 +317,24 @@ export default function NuevaTarea() {
                 onChange={(e) => setForm({ ...form, clienteCodigo: e.target.value, unidadComercialCodigo: "" })}
               >
                 <option value="">-- Seleccionar cliente --</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.codigo}>
-                    {c.codigo} {c.descripcion ? `- ${c.descripcion}` : ""}
-                  </option>
-                ))}
+                {misClientes.length > 0 && (
+                  <optgroup label="Mis clientes">
+                    {misClientes.map((c) => (
+                      <option key={c.id} value={c.codigo}>
+                        {c.codigo} {c.descripcion ? `- ${c.descripcion}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {restoClientes.length > 0 && (
+                  <optgroup label={misClientes.length > 0 ? "Resto clientes" : "Clientes"}>
+                    {restoClientes.map((c) => (
+                      <option key={c.id} value={c.codigo}>
+                        {c.codigo} {c.descripcion ? `- ${c.descripcion}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 

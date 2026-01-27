@@ -90,6 +90,11 @@ class UpdateMailConfigDto {
   @IsString()
   @IsOptional()
   azureClientSecret?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  firmaHtml?: string;
 }
 
 @ApiTags("admin/configuracion")
@@ -122,6 +127,7 @@ export class ConfiguracionAdminController {
         azureTenantId: null,
         azureClientSecret: null,
         azureConnected: false,
+        firmaHtml: null,
       };
     }
 
@@ -142,6 +148,7 @@ export class ConfiguracionAdminController {
         config.azureAccessToken &&
         config.azureTokenExpiry &&
         new Date(config.azureTokenExpiry) > new Date(),
+      firmaHtml: config.firmaHtml,
     };
   }
 
@@ -160,6 +167,7 @@ export class ConfiguracionAdminController {
       usuarioMail: dto.usuarioMail || null,
       azureClientId: dto.azureClientId || null,
       azureTenantId: dto.azureTenantId || null,
+      firmaHtml: dto.firmaHtml || null,
     };
 
     // Only update password if provided and not masked

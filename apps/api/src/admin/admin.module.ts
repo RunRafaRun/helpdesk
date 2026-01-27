@@ -13,6 +13,7 @@ import { ConfiguracionAdminController, SiteConfigController } from "./configurac
 import { NotificacionesAdminController } from "./notificaciones.admin.controller";
 import { LookupAdminController } from "./lookup.admin.controller";
 import { PlantillasAdminController } from "./plantillas.admin.controller";
+import { DashboardAdminController } from "./dashboard.admin.controller";
 
 @Module({
   imports: [PrismaModule, AuthModule, MailModule],
@@ -28,6 +29,7 @@ import { PlantillasAdminController } from "./plantillas.admin.controller";
     NotificacionesAdminController,
     LookupAdminController,
     PlantillasAdminController,
+    DashboardAdminController,
   ],
 })
 export class AdminModule {}

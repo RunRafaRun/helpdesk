@@ -6,6 +6,7 @@ import * as bcrypt from "bcryptjs";
 // Import additional seed functions
 import { main as seedDummyClientes } from "./seed-dummy-clientes";
 import { main as seedModulos } from "./seed-modulos";
+import { seedMasterData } from "./seed-master-data";
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
@@ -46,7 +47,7 @@ async function main() {
     data: allPerms.map((p) => ({ roleId: roleAdmin.id, permissionId: p.id })),
   });
 
-  // AGENTE => de momento ninguno de configuración (cuando hagamos panel agente, añadimos permisos funcionales)
+  // AGENTE => no admin permissions needed (lookup endpoints are public to authenticated users)
   await prisma.rolePermission.deleteMany({ where: { roleId: roleAgente.id } });
 
   // Admin principal (Agente)
@@ -92,8 +93,13 @@ async function main() {
     create: { clienteId: cliente.id, codigo: "TODOS", descripcion: "Todos", scope: "TODOS" },
   });
 
-  // Seed modules
-  await seedModulos(prisma);
+  // Seed master data from backup when available
+  const master = await seedMasterData(prisma);
+
+  // Seed modules (only if no backup provided)
+  if (!master.hasModulos) {
+    await seedModulos(prisma);
+  }
 
   // Seed dummy clients
   await seedDummyClientes(prisma);

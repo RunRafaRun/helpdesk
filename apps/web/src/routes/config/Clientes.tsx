@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/collapsible.css";
-import { createCliente, listClientes, listAgentes, Agente } from "../../lib/api";
+import { createCliente, listClientes, listAgentes, Agente, updateCliente } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
 type Cliente = {
@@ -25,6 +25,10 @@ export default function Clientes() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
+  const [showInactive, setShowInactive] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [replacementId, setReplacementId] = React.useState("");
+  const [status, setStatus] = React.useState<"ACTIVO" | "DESACTIVADO">("ACTIVO");
 
   const [clienteForm, setClienteForm] = React.useState({
     codigo: "",
@@ -49,7 +53,7 @@ export default function Clientes() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listClientes();
+      const data = await listClientes({ includeInactive: showInactive });
       setItems(data);
     } catch (e: any) {
       setError(e?.message ?? "Error");
@@ -70,7 +74,7 @@ export default function Clientes() {
   React.useEffect(() => {
     load();
     loadAgentes();
-  }, []);
+  }, [showInactive]);
 
   async function onCreateCliente(e: React.FormEvent) {
     e.preventDefault();
@@ -82,13 +86,33 @@ export default function Clientes() {
         descripcion: clienteForm.descripcion || undefined,
         jefeProyecto1: clienteForm.jefeProyecto1 || null,
         jefeProyecto2: clienteForm.jefeProyecto2 || null,
-        licenciaTipo: clienteForm.licenciaTipo || null
+        licenciaTipo: clienteForm.licenciaTipo || null,
+        activo: status === "ACTIVO",
       });
       setClienteForm({ codigo: "", descripcion: "", jefeProyecto1: "", jefeProyecto2: "", licenciaTipo: "" });
+      setStatus("ACTIVO");
       navigate(`/clientes/${created.codigo}/ficha`);
     } catch (e: any) {
       setError(e?.message ?? "Error");
       setSavingCliente(false);
+    }
+  }
+
+  async function onChangeStatus(cliente: Cliente, nextStatus: "ACTIVO" | "DESACTIVADO") {
+    if (nextStatus === "DESACTIVADO") {
+      if (!replacementId || !editingId || editingId !== cliente.id) {
+        setError("Debe seleccionar un reemplazo para desactivar.");
+        return;
+      }
+    }
+    try {
+      await updateCliente(cliente.id, { activo: nextStatus === "ACTIVO" }, replacementId || undefined);
+      setEditingId(null);
+      setReplacementId("");
+      setError(null);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Error al actualizar");
     }
   }
 
@@ -105,13 +129,14 @@ export default function Clientes() {
       </div>
 
       {/* Crear arriba (colapsado al entrar) - only shown if user has edit permission */}
-      {canEdit && (
-        <details className="card cardDetails collapsible">
-          <summary className="cardSummary">
-            <div className="h1">Crear cliente</div>
-          </summary>
-          <div className="cardContent">
-            <form className="form" onSubmit={onCreateCliente}>
+        {canEdit && (
+          <details className="card cardDetails collapsible">
+            <summary className="cardSummary">
+              <div className="h1">Crear cliente</div>
+            </summary>
+            <div className="cardContent">
+              {error && <div className="small" style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div>}
+              <form className="form" onSubmit={onCreateCliente}>
               <div className="field">
                 <div className="label">Código *</div>
                 <input className="input" value={clienteForm.codigo} onChange={(e)=>setClienteForm({ ...clienteForm, codigo: e.target.value })} required />
@@ -138,21 +163,28 @@ export default function Clientes() {
                   ))}
                 </select>
               </div>
-              <div className="field">
-                <div className="label">Tipo Licencia</div>
-                <select className="input" value={clienteForm.licenciaTipo} onChange={(e)=>setClienteForm({ ...clienteForm, licenciaTipo: e.target.value as "" | "AAM" | "PPU" })}>
-                  <option value="">-- Seleccionar --</option>
-                  <option value="AAM">AAM</option>
-                  <option value="PPU">PPU</option>
-                </select>
-              </div>
-              <div className="field full">
-                <button className="btn primary" disabled={savingCliente}>Crear cliente</button>
-              </div>
-            </form>
-          </div>
-        </details>
-      )}
+                <div className="field">
+                  <div className="label">Tipo Licencia</div>
+                  <select className="input" value={clienteForm.licenciaTipo} onChange={(e)=>setClienteForm({ ...clienteForm, licenciaTipo: e.target.value as "" | "AAM" | "PPU" })}>
+                    <option value="">-- Seleccionar --</option>
+                    <option value="AAM">AAM</option>
+                    <option value="PPU">PPU</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <div className="label">Estado</div>
+                  <select className="input" value={status} onChange={(e) => setStatus(e.target.value as "ACTIVO" | "DESACTIVADO")}> 
+                    <option value="ACTIVO">Activo</option>
+                    <option value="DESACTIVADO">Desactivado</option>
+                  </select>
+                </div>
+                <div className="field full">
+                  <button className="btn primary" disabled={savingCliente}>Crear cliente</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        )}
 
       {/* Lista debajo (abierta al entrar) */}
       <details className="card cardDetails collapsible" open>
@@ -165,7 +197,7 @@ export default function Clientes() {
         <div className="cardContent">
           {error && <div className="small" style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div>}
 
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
             <input
               className="input"
               type="text"
@@ -174,6 +206,14 @@ export default function Clientes() {
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: '100%', maxWidth: 500 }}
             />
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+              />
+              Mostrar desactivados
+            </label>
             {search && (
               <button
                 className="btn"
@@ -191,6 +231,7 @@ export default function Clientes() {
                 <th>Código</th>
                 <th>Descripción</th>
                 <th>Release</th>
+                <th>Estado</th>
                 <th style={{ width: '40px' }}></th>
                 <th />
               </tr>
@@ -208,6 +249,53 @@ export default function Clientes() {
                     ) : (
                       <span style={{ color: '#9CA3AF' }}>-</span>
                     )}
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <select
+                        className="input"
+                        style={{ minWidth: 140 }}
+                        value={c.activo !== false ? "ACTIVO" : "DESACTIVADO"}
+                        onChange={(e) => {
+                          const nextStatus = e.target.value as "ACTIVO" | "DESACTIVADO";
+                          if (nextStatus === "DESACTIVADO") {
+                            setEditingId(c.id);
+                            if (!replacementId) {
+                              setError("Seleccione un reemplazo antes de desactivar.");
+                              return;
+                            }
+                          }
+                          onChangeStatus(c, nextStatus);
+                        }}
+                      >
+                        <option value="ACTIVO">Activo</option>
+                        <option value="DESACTIVADO">Desactivado</option>
+                      </select>
+                      {editingId === c.id && (
+                        <select
+                          className="input"
+                          style={{ minWidth: 160 }}
+                          value={editingId === c.id ? replacementId : ""}
+                          onChange={(e) => {
+                            setEditingId(c.id);
+                            setReplacementId(e.target.value);
+                            if (e.target.value) {
+                              setError(null);
+                            }
+                          }}
+                        >
+                          <option value="">Reasignar a...</option>
+                          {items.filter((i) => i.id !== c.id && i.activo !== false).map((i) => (
+                            <option key={i.id} value={i.id}>{i.codigo}</option>
+                          ))}
+                        </select>
+                      )}
+                      {editingId === c.id && (
+                        <span className="small" style={{ color: "var(--muted)" }}>
+                          Requerido para desactivar.
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     {c.comentarioDestacado && (
@@ -235,7 +323,7 @@ export default function Clientes() {
               ))}
               {filteredItems.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', color: '#6B7280', padding: 24 }}>
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#6B7280', padding: 24 }}>
                     {search ? 'No se encontraron clientes con ese criterio' : 'No hay clientes registrados'}
                   </td>
                 </tr>

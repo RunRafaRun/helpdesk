@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiProperty } from "@nestjs/swagger";
 import { PrismaService } from "../prisma.service";
 import { JwtAuthGuard } from "../auth/guards";
 import { IsString, IsOptional, IsInt, IsBoolean } from "class-validator";
+import { BadRequestException, Query } from "@nestjs/common";
 
 export class CreateLookupDto {
    @ApiProperty()
@@ -33,6 +34,11 @@ export class CreateLookupDto {
    @IsOptional()
    @IsString()
    color?: string;
+
+   @ApiProperty({ required: false, default: true })
+   @IsOptional()
+   @IsBoolean()
+   activo?: boolean;
 }
 
 export class UpdateLookupDto {
@@ -60,6 +66,11 @@ export class UpdateLookupDto {
    @IsOptional()
    @IsString()
    color?: string;
+
+   @ApiProperty({ required: false })
+   @IsOptional()
+   @IsBoolean()
+   activo?: boolean;
 }
 
 @ApiTags("admin/lookup")
@@ -71,8 +82,12 @@ export class LookupAdminController {
 
   // ==================== TIPOS TAREA ====================
   @Get("tipos-tarea")
-  listTiposTarea() {
-    return this.prisma.tipoTarea.findMany({ orderBy: { orden: "asc" } });
+  listTiposTarea(@Query("includeInactive") includeInactive?: string) {
+    const include = includeInactive === "1" || includeInactive === "true";
+    return this.prisma.tipoTarea.findMany({
+      where: include ? {} : { activo: true },
+      orderBy: { orden: "asc" },
+    });
   }
 
   @Post("tipos-tarea")
@@ -87,33 +102,69 @@ export class LookupAdminController {
         descripcion: dto.descripcion,
         orden: dto.orden ?? 0,
         porDefecto: dto.porDefecto ?? false,
+        activo: dto.activo ?? true,
       },
     });
   }
 
   @Put("tipos-tarea/:id")
-  async updateTipoTarea(@Param("id") id: string, @Body() dto: UpdateLookupDto) {
+  async updateTipoTarea(@Param("id") id: string, @Body() dto: UpdateLookupDto, @Query("replacementId") replacementId?: string) {
     // If setting porDefecto to true, unset other defaults
     if (dto.porDefecto === true) {
       await this.prisma.tipoTarea.updateMany({ where: { porDefecto: true, NOT: { id } }, data: { porDefecto: false } });
+    }
+    if (dto.activo === false) {
+      const inUse = await this.prisma.tarea.count({ where: { tipoId: id } });
+      if (inUse > 0 && !replacementId) {
+        throw new BadRequestException("Este tipo tiene tareas asociadas. Debe reasignarlas antes de desactivar.");
+      }
+      if (replacementId) {
+        if (replacementId === id) {
+          throw new BadRequestException("El reemplazo debe ser distinto al registro a desactivar.");
+        }
+        const replacementExists = await this.prisma.tipoTarea.findFirst({ where: { id: replacementId, activo: true } });
+        if (!replacementExists) {
+          throw new BadRequestException("El reemplazo debe ser un tipo activo.");
+        }
+        await this.prisma.tarea.updateMany({ where: { tipoId: id }, data: { tipoId: replacementId } });
+      }
     }
     const data: any = {};
     if (dto.codigo !== undefined) data.codigo = dto.codigo;
     if (dto.descripcion !== undefined) data.descripcion = dto.descripcion;
     if (dto.orden !== undefined) data.orden = dto.orden;
     if (dto.porDefecto !== undefined) data.porDefecto = dto.porDefecto;
+    if (dto.activo !== undefined) data.activo = dto.activo;
     return this.prisma.tipoTarea.update({ where: { id }, data });
   }
 
   @Delete("tipos-tarea/:id")
-  deleteTipoTarea(@Param("id") id: string) {
+  async deleteTipoTarea(@Param("id") id: string, @Query("replacementId") replacementId?: string) {
+    const inUse = await this.prisma.tarea.count({ where: { tipoId: id } });
+    if (inUse > 0 && !replacementId) {
+      throw new BadRequestException("Este tipo tiene tareas asociadas. Debe reasignarlas antes de eliminar.");
+    }
+    if (replacementId) {
+      if (replacementId === id) {
+        throw new BadRequestException("El reemplazo debe ser distinto al registro a eliminar.");
+      }
+      const replacementExists = await this.prisma.tipoTarea.findFirst({ where: { id: replacementId, activo: true } });
+      if (!replacementExists) {
+        throw new BadRequestException("El reemplazo debe ser un tipo activo.");
+      }
+      await this.prisma.tarea.updateMany({ where: { tipoId: id }, data: { tipoId: replacementId } });
+    }
     return this.prisma.tipoTarea.delete({ where: { id } });
   }
 
   // ==================== ESTADOS TAREA ====================
   @Get("estados-tarea")
-  listEstadosTarea() {
-    return this.prisma.estadoTarea.findMany({ orderBy: { orden: "asc" } });
+  listEstadosTarea(@Query("includeInactive") includeInactive?: string) {
+    const include = includeInactive === "1" || includeInactive === "true";
+    return this.prisma.estadoTarea.findMany({
+      where: include ? {} : { activo: true },
+      orderBy: { orden: "asc" },
+    });
   }
 
   @Post("estados-tarea")
@@ -128,33 +179,69 @@ export class LookupAdminController {
         descripcion: dto.descripcion,
         orden: dto.orden ?? 0,
         porDefecto: dto.porDefecto ?? false,
+        activo: dto.activo ?? true,
       },
     });
   }
 
   @Put("estados-tarea/:id")
-  async updateEstadoTarea(@Param("id") id: string, @Body() dto: UpdateLookupDto) {
+  async updateEstadoTarea(@Param("id") id: string, @Body() dto: UpdateLookupDto, @Query("replacementId") replacementId?: string) {
     // If setting porDefecto to true, unset other defaults
     if (dto.porDefecto === true) {
       await this.prisma.estadoTarea.updateMany({ where: { porDefecto: true, NOT: { id } }, data: { porDefecto: false } });
+    }
+    if (dto.activo === false) {
+      const inUse = await this.prisma.tarea.count({ where: { estadoId: id } });
+      if (inUse > 0 && !replacementId) {
+        throw new BadRequestException("Este estado tiene tareas asociadas. Debe reasignarlas antes de desactivar.");
+      }
+      if (replacementId) {
+        if (replacementId === id) {
+          throw new BadRequestException("El reemplazo debe ser distinto al registro a desactivar.");
+        }
+        const replacementExists = await this.prisma.estadoTarea.findFirst({ where: { id: replacementId, activo: true } });
+        if (!replacementExists) {
+          throw new BadRequestException("El reemplazo debe ser un estado activo.");
+        }
+        await this.prisma.tarea.updateMany({ where: { estadoId: id }, data: { estadoId: replacementId } });
+      }
     }
     const data: any = {};
     if (dto.codigo !== undefined) data.codigo = dto.codigo;
     if (dto.descripcion !== undefined) data.descripcion = dto.descripcion;
     if (dto.orden !== undefined) data.orden = dto.orden;
     if (dto.porDefecto !== undefined) data.porDefecto = dto.porDefecto;
+    if (dto.activo !== undefined) data.activo = dto.activo;
     return this.prisma.estadoTarea.update({ where: { id }, data });
   }
 
   @Delete("estados-tarea/:id")
-  deleteEstadoTarea(@Param("id") id: string) {
+  async deleteEstadoTarea(@Param("id") id: string, @Query("replacementId") replacementId?: string) {
+    const inUse = await this.prisma.tarea.count({ where: { estadoId: id } });
+    if (inUse > 0 && !replacementId) {
+      throw new BadRequestException("Este estado tiene tareas asociadas. Debe reasignarlas antes de eliminar.");
+    }
+    if (replacementId) {
+      if (replacementId === id) {
+        throw new BadRequestException("El reemplazo debe ser distinto al registro a eliminar.");
+      }
+      const replacementExists = await this.prisma.estadoTarea.findFirst({ where: { id: replacementId, activo: true } });
+      if (!replacementExists) {
+        throw new BadRequestException("El reemplazo debe ser un estado activo.");
+      }
+      await this.prisma.tarea.updateMany({ where: { estadoId: id }, data: { estadoId: replacementId } });
+    }
     return this.prisma.estadoTarea.delete({ where: { id } });
   }
 
   // ==================== PRIORIDADES TAREA ====================
   @Get("prioridades-tarea")
-  listPrioridadesTarea() {
-    return this.prisma.prioridadTarea.findMany({ orderBy: { orden: "asc" } });
+  listPrioridadesTarea(@Query("includeInactive") includeInactive?: string) {
+    const include = includeInactive === "1" || includeInactive === "true";
+    return this.prisma.prioridadTarea.findMany({
+      where: include ? {} : { activo: true },
+      orderBy: { orden: "asc" },
+    });
   }
 
   @Post("prioridades-tarea")
@@ -170,15 +257,32 @@ export class LookupAdminController {
         orden: dto.orden ?? 0,
         porDefecto: dto.porDefecto ?? false,
         color: dto.color,
+        activo: dto.activo ?? true,
       },
     });
   }
 
   @Put("prioridades-tarea/:id")
-  async updatePrioridadTarea(@Param("id") id: string, @Body() dto: UpdateLookupDto) {
+  async updatePrioridadTarea(@Param("id") id: string, @Body() dto: UpdateLookupDto, @Query("replacementId") replacementId?: string) {
     // If setting porDefecto to true, unset other defaults
     if (dto.porDefecto === true) {
       await this.prisma.prioridadTarea.updateMany({ where: { porDefecto: true, NOT: { id } }, data: { porDefecto: false } });
+    }
+    if (dto.activo === false) {
+      const inUse = await this.prisma.tarea.count({ where: { prioridadId: id } });
+      if (inUse > 0 && !replacementId) {
+        throw new BadRequestException("Esta prioridad tiene tareas asociadas. Debe reasignarlas antes de desactivar.");
+      }
+      if (replacementId) {
+        if (replacementId === id) {
+          throw new BadRequestException("El reemplazo debe ser distinto al registro a desactivar.");
+        }
+        const replacementExists = await this.prisma.prioridadTarea.findFirst({ where: { id: replacementId, activo: true } });
+        if (!replacementExists) {
+          throw new BadRequestException("El reemplazo debe ser una prioridad activa.");
+        }
+        await this.prisma.tarea.updateMany({ where: { prioridadId: id }, data: { prioridadId: replacementId } });
+      }
     }
     const data: any = {};
     if (dto.codigo !== undefined) data.codigo = dto.codigo;
@@ -186,11 +290,26 @@ export class LookupAdminController {
     if (dto.orden !== undefined) data.orden = dto.orden;
     if (dto.porDefecto !== undefined) data.porDefecto = dto.porDefecto;
     if (dto.color !== undefined) data.color = dto.color;
+    if (dto.activo !== undefined) data.activo = dto.activo;
     return this.prisma.prioridadTarea.update({ where: { id }, data });
   }
 
   @Delete("prioridades-tarea/:id")
-  deletePrioridadTarea(@Param("id") id: string) {
+  async deletePrioridadTarea(@Param("id") id: string, @Query("replacementId") replacementId?: string) {
+    const inUse = await this.prisma.tarea.count({ where: { prioridadId: id } });
+    if (inUse > 0 && !replacementId) {
+      throw new BadRequestException("Esta prioridad tiene tareas asociadas. Debe reasignarlas antes de eliminar.");
+    }
+    if (replacementId) {
+      if (replacementId === id) {
+        throw new BadRequestException("El reemplazo debe ser distinto al registro a eliminar.");
+      }
+      const replacementExists = await this.prisma.prioridadTarea.findFirst({ where: { id: replacementId, activo: true } });
+      if (!replacementExists) {
+        throw new BadRequestException("El reemplazo debe ser una prioridad activa.");
+      }
+      await this.prisma.tarea.updateMany({ where: { prioridadId: id }, data: { prioridadId: replacementId } });
+    }
     return this.prisma.prioridadTarea.delete({ where: { id } });
   }
 
@@ -223,6 +342,36 @@ export class LookupAdminController {
   listHotfixesByRelease(@Param("releaseId") releaseId: string) {
     return this.prisma.hotfix.findMany({
       where: { releaseId },
+      orderBy: { codigo: "asc" },
+    });
+  }
+
+  // ==================== CLIENTES (read-only lookup for dropdowns) ====================
+  @Get("clientes")
+  listClientes() {
+    return this.prisma.cliente.findMany({
+      where: { activo: true },
+      select: {
+        id: true,
+        codigo: true,
+        descripcion: true,
+        jefeProyecto1: true,
+        jefeProyecto2: true,
+      },
+      orderBy: { codigo: "asc" },
+    });
+  }
+
+  // ==================== MODULOS (read-only lookup for dropdowns) ====================
+  @Get("modulos")
+  listModulos() {
+    return this.prisma.modulo.findMany({
+      where: { activo: true },
+      select: {
+        id: true,
+        codigo: true,
+        descripcion: true,
+      },
       orderBy: { codigo: "asc" },
     });
   }
