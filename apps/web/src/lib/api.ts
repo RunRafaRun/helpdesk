@@ -818,6 +818,17 @@ export async function listReleasesLookup() {
   return request<Release[]>("/admin/lookup/releases");
 }
 
+export type UnidadComercialLookup = {
+  id: string;
+  codigo: string;
+  descripcion?: string | null;
+  scope: string;
+};
+
+export async function listUnidadesLookup(clienteId: string) {
+  return request<UnidadComercialLookup[]>(`/admin/lookup/clientes/${clienteId}/unidades`);
+}
+
 // Plantillas (Templates)
 export type Plantilla = {
   id: string;

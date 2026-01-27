@@ -26,7 +26,7 @@ import {
   listClienteSoftware,
   listClienteConexiones,
   listUsuariosCliente,
-  listUnidades,
+  listUnidadesLookup,
   listClienteCentrosTrabajo,
   listClienteReleasesPlan,
   listClienteComentarios,
@@ -156,7 +156,7 @@ function ClientePopup({ clienteId, onClose }: { clienteId: string; onClose: () =
       if (activeTab === "general" || !clienteId) return;
 
       const dataLoaders: Record<string, { check: any[]; loader: () => Promise<any>; setter: (data: any) => void }> = {
-        unidades: { check: unidades, loader: () => listUnidades(clienteId), setter: setUnidades },
+        unidades: { check: unidades, loader: () => listUnidadesLookup(clienteId), setter: setUnidades },
         usuarios: { check: usuarios, loader: () => listUsuariosCliente(clienteId), setter: setUsuarios },
         software: { check: software, loader: () => listClienteSoftware(clienteId), setter: setSoftware },
         contactos: { check: contactos, loader: () => listContactos(clienteId), setter: setContactos },

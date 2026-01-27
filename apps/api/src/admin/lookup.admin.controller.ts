@@ -321,7 +321,7 @@ export class LookupAdminController {
       include: {
         hotfixes: {
           orderBy: { codigo: "asc" },
-          select: { id: true, codigo: true, descripcion: true },
+          select: { id: true, codigo: true, descripcion: true, rama: true },
         },
       },
     });
@@ -373,6 +373,21 @@ export class LookupAdminController {
         descripcion: true,
       },
       orderBy: { codigo: "asc" },
+    });
+  }
+
+  // ==================== UNIDADES COMERCIALES (read-only lookup for dropdowns) ====================
+  @Get("clientes/:clienteId/unidades")
+  listUnidadesByCliente(@Param("clienteId") clienteId: string) {
+    return this.prisma.unidadComercial.findMany({
+      where: { clienteId, activo: true },
+      select: {
+        id: true,
+        codigo: true,
+        descripcion: true,
+        scope: true,
+      },
+      orderBy: [{ scope: "asc" }, { codigo: "asc" }],
     });
   }
 }

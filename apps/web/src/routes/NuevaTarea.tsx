@@ -2,7 +2,6 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createTarea,
-  listUnidades,
   listTiposTarea,
   listPrioridadesTarea,
   listEstadosTarea,
@@ -10,8 +9,10 @@ import {
   listClientesLookup,
   listModulosLookup,
   listReleasesLookup,
+  listUnidadesLookup,
   ClienteLookup,
   ModuloLookup,
+  UnidadComercialLookup,
   TipoTarea,
   PrioridadTarea,
   EstadoTarea,
@@ -21,21 +22,12 @@ import {
 import TipTapEditor from "../components/TipTapEditor";
 import { useAuth } from "../lib/auth";
 
-
-
-type UnidadComercial = {
-  id: string;
-  codigo: string;
-  descripcion?: string;
-  scope: string;
-};
-
 export default function NuevaTarea() {
   const navigate = useNavigate();
   const { me } = useAuth();
 
   const [clientes, setClientes] = React.useState<ClienteLookup[]>([]);
-  const [unidades, setUnidades] = React.useState<UnidadComercial[]>([]);
+  const [unidades, setUnidades] = React.useState<UnidadComercialLookup[]>([]);
   const [modulos, setModulos] = React.useState<ModuloLookup[]>([]);
   const [tipos, setTipos] = React.useState<TipoTarea[]>([]);
   const [prioridades, setPrioridades] = React.useState<PrioridadTarea[]>([]);
@@ -126,7 +118,7 @@ export default function NuevaTarea() {
 
     setLoadingUnidades(true);
     try {
-      const data = await listUnidades(cliente.id);
+      const data = await listUnidadesLookup(cliente.id);
       setUnidades(data);
       // Auto-select if only one
       if (data.length === 1) {
