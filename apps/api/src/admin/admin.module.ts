@@ -17,6 +17,7 @@ import { PlantillasAdminController } from "./plantillas.admin.controller";
 import { DashboardAdminController } from "./dashboard.admin.controller";
 import { LogNotificacionesAdminController } from "./log-notificaciones.admin.controller";
 import { NotificacionConfigAdminController } from "./notificacion-config.admin.controller";
+import { WorkflowsAdminController } from "./workflows.admin.controller";
 
 @Module({
   imports: [PrismaModule, AuthModule, MailModule],
@@ -35,6 +36,7 @@ import { NotificacionConfigAdminController } from "./notificacion-config.admin.c
     DashboardAdminController,
     LogNotificacionesAdminController,
     NotificacionConfigAdminController,
+    WorkflowsAdminController,
   ],
   providers: [NotificationQueueService],
 })

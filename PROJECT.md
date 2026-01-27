@@ -78,6 +78,10 @@ infra/
   - Task filtering by client, status, priority, assigned agent
 - **ClienteFichaModule**: Client profile data (software, contacts, users, connections, comments, work centers, release plans)
 - **MailModule**: Email services with SMTP/Azure OAuth support and scheduled sending
+- **NotificacionesModule**: Notification system with:
+  - `NotificacionTareaService`: Queues notifications for task events
+  - `WorkflowEvaluationService`: Evaluates workflow rules and resolves recipients
+  - Support for both legacy config-based and workflow-based notifications
 - **HealthModule**: Health check endpoint
 - **PrismaModule**: Database access layer (singleton PrismaService)
 
@@ -101,6 +105,8 @@ infra/
 | `/config/prioridades-tarea` | Task priorities management with colors |
 | `/config/plantillas` | Reusable text templates with wildcards |
 | `/config/notificaciones` | Email configuration |
+| `/config/workflows` | Notification workflows (if-then rules engine) |
+| `/config/log-notificaciones` | Notification log and queue management |
 | `/clientes/:clienteCodigo/ficha` | Client profile view with tabs |
 | `/` (Dashboard) | Statistics dashboard with dynamic priority colors (admin customizable layout) |
 
@@ -144,6 +150,11 @@ Widgets available:
 | **ConfiguracionMail** | Email server configuration (SMTP or Azure OAuth) |
 | **Plantilla** | Reusable text templates with wildcard support |
 | **DashboardConfig** | Dashboard layout configuration (widget order and visibility) |
+| **NotificationWorkflow** | If-then notification rules with triggers, conditions, recipients |
+| **NotificationWorkflowCondition** | Filter conditions for workflows (field/operator/value) |
+| **NotificationWorkflowRecipient** | Recipient configuration (type + value + To/Cc) |
+| **NotificacionTarea** | Notification queue for task-related emails |
+| **NotificacionConfigEvento** | Legacy event-based notification configuration |
 
 ### Lookup Tables (TipoTarea, EstadoTarea, PrioridadTarea)
 
@@ -223,6 +234,70 @@ Templates support wildcards that are replaced with actual values at runtime:
 - Task comment editor (TareaFicha.tsx) - Insert templates in comments
 - Mass notifications (NotificacionesMasivas.tsx) - Use templates in notification body
 
+#### Notification Workflows System
+
+The application includes a powerful if-then rules engine for automated notifications:
+
+**Workflow Model Fields**:
+- `nombre` (String) - Workflow name
+- `descripcion` (String, optional) - Description
+- `trigger` (WorkflowTrigger enum) - Event that triggers the workflow
+- `activo` (Boolean) - Active/inactive status
+- `orden` (Int) - Evaluation order (lower = evaluated first)
+- `stopOnMatch` (Boolean) - Stop evaluating subsequent workflows if this one matches
+- `plantillaId` (UUID, optional) - Template to use for email body
+- `asuntoCustom` (String, optional) - Custom email subject
+- `ccJefeProyecto1/2` (Boolean) - Auto-CC project managers
+
+**Workflow Triggers (WorkflowTrigger enum)**:
+| Trigger | Description |
+|---------|-------------|
+| TAREA_CREADA | New task created |
+| TAREA_MODIFICADA | Task modified |
+| TAREA_CERRADA | Task closed |
+| MENSAJE_CLIENTE | Client message added |
+| RESPUESTA_AGENTE | Agent response added |
+| NOTA_INTERNA | Internal note added |
+| CAMBIO_ESTADO | Status changed |
+| CAMBIO_ASIGNACION | Assignment changed |
+| CAMBIO_PRIORIDAD | Priority changed |
+| CAMBIO_TIPO | Type changed |
+| CAMBIO_MODULO | Module changed |
+| CAMBIO_RELEASE | Release/hotfix changed |
+
+**Condition Fields (WorkflowConditionField enum)**:
+- Task attributes: CLIENTE_ID, ESTADO_ID, TIPO_ID, PRIORIDAD_ID, MODULO_ID, RELEASE_ID, HOTFIX_ID
+- Code-based: CLIENTE_CODIGO, ESTADO_CODIGO, TIPO_CODIGO, PRIORIDAD_CODIGO, etc.
+- Assignments: ASIGNADO_A_ID, CREADO_POR_AGENTE_ID, CREADO_POR_CLIENTE_ID
+- Change tracking: ESTADO_ANTERIOR_ID, ESTADO_NUEVO_ID, PRIORIDAD_ANTERIOR_ID, PRIORIDAD_NUEVA_ID
+
+**Condition Operators (WorkflowConditionOperator enum)**:
+EQUALS, NOT_EQUALS, IN, NOT_IN, IS_NULL, IS_NOT_NULL, CONTAINS, STARTS_WITH
+
+**Recipient Types (WorkflowRecipientType enum)**:
+| Type | Description |
+|------|-------------|
+| USUARIOS_CLIENTE | All users of the task's client |
+| USUARIO_CLIENTE_CREADOR | The client user who created the task |
+| JEFE_PROYECTO_1/2 | Client's project managers |
+| AGENTE_ASIGNADO | Currently assigned agent |
+| AGENTE_CREADOR | Agent who created the task |
+| AGENTE_REVISOR | Task reviewer agent |
+| AGENTES_ESPECIFICOS | Specific agents by ID |
+| ROLES_ESPECIFICOS | All agents with specific roles |
+| EMAILS_MANUALES | Manual email addresses |
+
+**OR Group Logic**:
+Conditions within the same `orGroup` are evaluated with OR logic. Different groups are evaluated with AND logic. This allows complex conditions like: "(cliente=A OR cliente=B) AND (prioridad=ALTA)".
+
+**Backend Components**:
+- `apps/api/src/admin/workflows.admin.controller.ts` - CRUD endpoints for workflows
+- `apps/api/src/notificaciones/workflow-evaluation.service.ts` - Workflow evaluation engine
+- `apps/api/src/notificaciones/notificacion-tarea.service.ts` - Integration with notification queue
+
+**Frontend Components**:
+- `apps/web/src/routes/config/Workflows.tsx` - Workflow management page
+
 ## Authentication & Permissions
 
 - JWT tokens via `/auth/login`
@@ -240,7 +315,7 @@ Templates support wildcards that are replaced with actual values at runtime:
 | CONFIG_MODULOS | Module management |
 | CONFIG_RELEASES | Release/hotfix management |
 | CONFIG_RBAC | Role and permission management |
-| CONFIG_NOTIFICACIONES | Mass notifications and mail config |
+| CONFIG_NOTIFICACIONES | Mass notifications, mail config, and notification workflows |
 
 ### Permission-Free Lookup Endpoints
 

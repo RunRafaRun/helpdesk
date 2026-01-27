@@ -1073,3 +1073,243 @@ export async function updateNotificacionConfig(eventoTipo: string, input: {
     body: JSON.stringify(input),
   });
 }
+
+// ==================== NOTIFICATION WORKFLOWS ====================
+
+export type WorkflowTrigger =
+  | "TAREA_CREADA"
+  | "TAREA_MODIFICADA"
+  | "TAREA_CERRADA"
+  | "MENSAJE_CLIENTE"
+  | "RESPUESTA_AGENTE"
+  | "NOTA_INTERNA"
+  | "CAMBIO_ESTADO"
+  | "CAMBIO_ASIGNACION"
+  | "CAMBIO_PRIORIDAD"
+  | "CAMBIO_TIPO"
+  | "CAMBIO_MODULO"
+  | "CAMBIO_RELEASE";
+
+export type WorkflowConditionField =
+  | "CLIENTE_ID"
+  | "CLIENTE_CODIGO"
+  | "ESTADO_ID"
+  | "ESTADO_CODIGO"
+  | "TIPO_ID"
+  | "TIPO_CODIGO"
+  | "PRIORIDAD_ID"
+  | "PRIORIDAD_CODIGO"
+  | "MODULO_ID"
+  | "MODULO_CODIGO"
+  | "RELEASE_ID"
+  | "RELEASE_CODIGO"
+  | "RELEASE_RAMA"
+  | "HOTFIX_ID"
+  | "ASIGNADO_A_ID"
+  | "CREADO_POR_AGENTE_ID"
+  | "CREADO_POR_CLIENTE_ID"
+  | "UNIDAD_COMERCIAL_ID"
+  | "UNIDAD_COMERCIAL_SCOPE"
+  | "REPRODUCIDO"
+  | "ESTADO_ANTERIOR_ID"
+  | "ESTADO_NUEVO_ID"
+  | "PRIORIDAD_ANTERIOR_ID"
+  | "PRIORIDAD_NUEVA_ID";
+
+export type WorkflowConditionOperator =
+  | "EQUALS"
+  | "NOT_EQUALS"
+  | "IN"
+  | "NOT_IN"
+  | "IS_NULL"
+  | "IS_NOT_NULL"
+  | "CONTAINS"
+  | "STARTS_WITH";
+
+export type WorkflowRecipientType =
+  | "USUARIOS_CLIENTE"
+  | "USUARIO_CLIENTE_CREADOR"
+  | "JEFE_PROYECTO_1"
+  | "JEFE_PROYECTO_2"
+  | "AGENTE_ASIGNADO"
+  | "AGENTE_CREADOR"
+  | "AGENTE_REVISOR"
+  | "AGENTES_ESPECIFICOS"
+  | "ROLES_ESPECIFICOS"
+  | "EMAILS_MANUALES";
+
+export type WorkflowCondition = {
+  id?: string;
+  field: WorkflowConditionField;
+  operator: WorkflowConditionOperator;
+  value?: string | null;
+  orGroup?: number;
+};
+
+export type WorkflowRecipient = {
+  id?: string;
+  recipientType: WorkflowRecipientType;
+  value?: string | null;
+  isCc?: boolean;
+};
+
+export type WorkflowListItem = {
+  id: string;
+  nombre: string;
+  descripcion?: string | null;
+  trigger: WorkflowTrigger;
+  activo: boolean;
+  orden: number;
+  stopOnMatch: boolean;
+  conditionsCount: number;
+  recipientsCount: number;
+  plantilla?: { id: string; codigo: string } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkflowDetail = {
+  id: string;
+  nombre: string;
+  descripcion?: string | null;
+  trigger: WorkflowTrigger;
+  activo: boolean;
+  orden: number;
+  stopOnMatch: boolean;
+  plantillaId?: string | null;
+  asuntoCustom?: string | null;
+  ccJefeProyecto1: boolean;
+  ccJefeProyecto2: boolean;
+  plantilla?: { id: string; codigo: string; descripcion?: string | null } | null;
+  conditions: WorkflowCondition[];
+  recipients: WorkflowRecipient[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateWorkflowInput = {
+  nombre: string;
+  descripcion?: string;
+  trigger: WorkflowTrigger;
+  activo?: boolean;
+  orden?: number;
+  stopOnMatch?: boolean;
+  plantillaId?: string;
+  asuntoCustom?: string;
+  ccJefeProyecto1?: boolean;
+  ccJefeProyecto2?: boolean;
+  conditions?: WorkflowCondition[];
+  recipients?: WorkflowRecipient[];
+};
+
+export type UpdateWorkflowInput = Partial<CreateWorkflowInput>;
+
+// Labels for UI
+export const WORKFLOW_TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
+  TAREA_CREADA: "Tarea creada",
+  TAREA_MODIFICADA: "Tarea modificada",
+  TAREA_CERRADA: "Tarea cerrada",
+  MENSAJE_CLIENTE: "Mensaje del cliente",
+  RESPUESTA_AGENTE: "Respuesta del agente",
+  NOTA_INTERNA: "Nota interna",
+  CAMBIO_ESTADO: "Cambio de estado",
+  CAMBIO_ASIGNACION: "Cambio de asignacion",
+  CAMBIO_PRIORIDAD: "Cambio de prioridad",
+  CAMBIO_TIPO: "Cambio de tipo",
+  CAMBIO_MODULO: "Cambio de modulo",
+  CAMBIO_RELEASE: "Cambio de release/hotfix",
+};
+
+export const CONDITION_FIELD_LABELS: Record<WorkflowConditionField, string> = {
+  CLIENTE_ID: "Cliente",
+  CLIENTE_CODIGO: "Codigo de cliente",
+  ESTADO_ID: "Estado",
+  ESTADO_CODIGO: "Codigo de estado",
+  TIPO_ID: "Tipo de tarea",
+  TIPO_CODIGO: "Codigo de tipo",
+  PRIORIDAD_ID: "Prioridad",
+  PRIORIDAD_CODIGO: "Codigo de prioridad",
+  MODULO_ID: "Modulo",
+  MODULO_CODIGO: "Codigo de modulo",
+  RELEASE_ID: "Release",
+  RELEASE_CODIGO: "Codigo de release",
+  RELEASE_RAMA: "Rama de release",
+  HOTFIX_ID: "Hotfix",
+  ASIGNADO_A_ID: "Agente asignado",
+  CREADO_POR_AGENTE_ID: "Creado por agente",
+  CREADO_POR_CLIENTE_ID: "Creado por usuario cliente",
+  UNIDAD_COMERCIAL_ID: "Unidad comercial",
+  UNIDAD_COMERCIAL_SCOPE: "Ambito unidad comercial",
+  REPRODUCIDO: "Bug reproducido",
+  ESTADO_ANTERIOR_ID: "Estado anterior",
+  ESTADO_NUEVO_ID: "Estado nuevo",
+  PRIORIDAD_ANTERIOR_ID: "Prioridad anterior",
+  PRIORIDAD_NUEVA_ID: "Prioridad nueva",
+};
+
+export const CONDITION_OPERATOR_LABELS: Record<WorkflowConditionOperator, string> = {
+  EQUALS: "es igual a",
+  NOT_EQUALS: "no es igual a",
+  IN: "esta en",
+  NOT_IN: "no esta en",
+  IS_NULL: "esta vacio",
+  IS_NOT_NULL: "tiene valor",
+  CONTAINS: "contiene",
+  STARTS_WITH: "empieza con",
+};
+
+export const RECIPIENT_TYPE_LABELS: Record<WorkflowRecipientType, string> = {
+  USUARIOS_CLIENTE: "Usuarios del cliente",
+  USUARIO_CLIENTE_CREADOR: "Usuario cliente creador",
+  JEFE_PROYECTO_1: "Jefe de Proyecto 1",
+  JEFE_PROYECTO_2: "Jefe de Proyecto 2",
+  AGENTE_ASIGNADO: "Agente asignado",
+  AGENTE_CREADOR: "Agente creador",
+  AGENTE_REVISOR: "Agente revisor",
+  AGENTES_ESPECIFICOS: "Agentes especificos",
+  ROLES_ESPECIFICOS: "Roles especificos",
+  EMAILS_MANUALES: "Emails manuales",
+};
+
+export async function listWorkflows(params?: {
+  trigger?: WorkflowTrigger;
+  activo?: boolean;
+  search?: string;
+}) {
+  const qs = new URLSearchParams();
+  if (params?.trigger) qs.set("trigger", params.trigger);
+  if (params?.activo !== undefined) qs.set("activo", String(params.activo));
+  if (params?.search) qs.set("search", params.search);
+  const query = qs.toString();
+  return request<WorkflowListItem[]>(`/admin/workflows${query ? `?${query}` : ""}`);
+}
+
+export async function getWorkflow(id: string) {
+  return request<WorkflowDetail>(`/admin/workflows/${id}`);
+}
+
+export async function createWorkflow(input: CreateWorkflowInput) {
+  return request<WorkflowDetail>("/admin/workflows", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateWorkflow(id: string, input: UpdateWorkflowInput) {
+  return request<WorkflowDetail>(`/admin/workflows/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteWorkflow(id: string) {
+  return request<{ success: boolean }>(`/admin/workflows/${id}`, { method: "DELETE" });
+}
+
+export async function toggleWorkflow(id: string) {
+  return request<{ activo: boolean }>(`/admin/workflows/${id}/toggle`, { method: "POST" });
+}
+
+export async function duplicateWorkflow(id: string) {
+  return request<WorkflowDetail>(`/admin/workflows/${id}/duplicate`, { method: "POST" });
+}

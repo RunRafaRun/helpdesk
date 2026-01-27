@@ -523,6 +523,7 @@ model Plantilla {
   createdAt           DateTime                   @default(now())
   updatedAt           DateTime                   @updatedAt
   notificacionConfigs NotificacionConfigEvento[]
+  workflows           NotificationWorkflow[]
 }
 
 // Notification configuration per event type
@@ -587,4 +588,145 @@ model DashboardConfig {
   updatedAt   DateTime @updatedAt
 
   @@unique([isDefault], map: "unique_default_dashboard")
+}
+
+// ============================================================================
+// NOTIFICATION WORKFLOW SYSTEM
+// Allows admins to create flexible rules for when and to whom notifications are sent
+// ============================================================================
+
+// Trigger types - WHEN the workflow is evaluated
+enum WorkflowTrigger {
+  TAREA_CREADA           // New task created
+  TAREA_MODIFICADA       // Task updated (any field)
+  TAREA_CERRADA          // Task closed
+  MENSAJE_CLIENTE        // Client sends message
+  RESPUESTA_AGENTE       // Agent responds
+  NOTA_INTERNA           // Internal note added
+  CAMBIO_ESTADO          // Status changed
+  CAMBIO_ASIGNACION      // Assignment changed
+  CAMBIO_PRIORIDAD       // Priority changed
+  CAMBIO_TIPO            // Type changed
+  CAMBIO_MODULO          // Module changed
+  CAMBIO_RELEASE         // Release/hotfix changed
+}
+
+// Condition field types - WHAT to compare
+enum WorkflowConditionField {
+  CLIENTE_ID             // Specific client(s)
+  CLIENTE_CODIGO         // Client code
+  ESTADO_ID              // Task status
+  ESTADO_CODIGO          // Status code
+  TIPO_ID                // Task type
+  TIPO_CODIGO            // Type code
+  PRIORIDAD_ID           // Priority
+  PRIORIDAD_CODIGO       // Priority code
+  MODULO_ID              // Module
+  MODULO_CODIGO          // Module code
+  RELEASE_ID             // Release
+  RELEASE_CODIGO         // Release code
+  RELEASE_RAMA           // Release branch (DESARROLLO/PRODUCCION)
+  HOTFIX_ID              // Hotfix
+  ASIGNADO_A_ID          // Assigned agent
+  CREADO_POR_AGENTE_ID   // Created by agent
+  CREADO_POR_CLIENTE_ID  // Created by client user
+  UNIDAD_COMERCIAL_ID    // Commercial unit
+  UNIDAD_COMERCIAL_SCOPE // Unit scope (HOTEL/CENTRAL/TODOS)
+  REPRODUCIDO            // Bug reproduced flag
+  // For change events, we can also compare old vs new values
+  ESTADO_ANTERIOR_ID     // Previous status (for CAMBIO_ESTADO)
+  ESTADO_NUEVO_ID        // New status (for CAMBIO_ESTADO)
+  PRIORIDAD_ANTERIOR_ID  // Previous priority
+  PRIORIDAD_NUEVA_ID     // New priority
+}
+
+// Comparison operators
+enum WorkflowConditionOperator {
+  EQUALS                 // Exact match
+  NOT_EQUALS             // Not equal
+  IN                     // In list (for multi-select)
+  NOT_IN                 // Not in list
+  IS_NULL                // Field is null/empty
+  IS_NOT_NULL            // Field has value
+  CONTAINS               // String contains
+  STARTS_WITH            // String starts with
+}
+
+// Recipient types - WHO receives the notification
+enum WorkflowRecipientType {
+  USUARIOS_CLIENTE       // All active users of the task's client with notifications enabled
+  USUARIO_CLIENTE_CREADOR // The client user who created the task
+  JEFE_PROYECTO_1        // JP1 of the client
+  JEFE_PROYECTO_2        // JP2 of the client
+  AGENTE_ASIGNADO        // Currently assigned agent
+  AGENTE_CREADOR         // Agent who created the task
+  AGENTE_REVISOR         // Agent who reviewed
+  AGENTES_ESPECIFICOS    // Specific agent(s) by ID
+  ROLES_ESPECIFICOS      // All agents with specific role(s)
+  EMAILS_MANUALES        // Manual email addresses
+}
+
+// Main workflow model
+model NotificationWorkflow {
+  id          String           @id @default(uuid()) @db.Uuid
+  nombre      String           @db.VarChar(200)
+  descripcion String?          @db.Text
+  trigger     WorkflowTrigger
+  activo      Boolean          @default(true)
+  orden       Int              @default(0)     // Execution order
+
+  // If true, stops processing subsequent workflows after this one matches
+  stopOnMatch Boolean          @default(false)
+
+  // Template and email configuration
+  plantillaId   String?        @db.Uuid
+  asuntoCustom  String?        @db.VarChar(500)
+
+  // Optional CC configuration
+  ccJefeProyecto1 Boolean      @default(false)
+  ccJefeProyecto2 Boolean      @default(false)
+
+  createdById String?          @db.Uuid
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  plantilla   Plantilla?                  @relation(fields: [plantillaId], references: [id])
+  conditions  NotificationWorkflowCondition[]
+  recipients  NotificationWorkflowRecipient[]
+
+  @@index([trigger, activo])
+  @@index([orden])
+}
+
+// Workflow conditions - filtering rules (AND logic between conditions)
+model NotificationWorkflowCondition {
+  id         String                    @id @default(uuid()) @db.Uuid
+  workflowId String                    @db.Uuid
+  field      WorkflowConditionField
+  operator   WorkflowConditionOperator
+  // Value can be a single ID, list of IDs (JSON array), or string
+  value      String?                   @db.Text
+  // For complex conditions, allow grouping with OR logic
+  orGroup    Int                       @default(0) // Conditions in same orGroup use OR logic
+
+  workflow   NotificationWorkflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
+// Workflow recipients - who receives the notification
+model NotificationWorkflowRecipient {
+  id           String                @id @default(uuid()) @db.Uuid
+  workflowId   String                @db.Uuid
+  recipientType WorkflowRecipientType
+  // For AGENTES_ESPECIFICOS: JSON array of agent IDs
+  // For ROLES_ESPECIFICOS: JSON array of role IDs
+  // For EMAILS_MANUALES: JSON array of email strings
+  value        String?               @db.Text
+  // Whether this recipient goes to To or Cc
+  isCc         Boolean               @default(false)
+
+  workflow     NotificationWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
 }
