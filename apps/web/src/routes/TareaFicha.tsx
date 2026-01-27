@@ -928,7 +928,8 @@ export default function TareaFicha() {
    const [selectedComment, setSelectedComment] = React.useState<TareaEvento | null>(null);
    const [showCommentEditor, setShowCommentEditor] = React.useState(false);
    const [submittingComment, setSubmittingComment] = React.useState(false);
-   const [commentsOrderAsc, setCommentsOrderAsc] = React.useState(false); // false = newest first (DESC)
+  const [commentsOrderAsc, setCommentsOrderAsc] = React.useState(false); // false = newest first (DESC)
+  const [replyToEventId, setReplyToEventId] = React.useState<string | null>(null);
 
   async function loadLookups() {
     try {
@@ -1049,9 +1050,11 @@ export default function TareaFicha() {
        const updatedTimeline = await addComentarioTarea(id, {
          tipo,
          cuerpo: content.trim(),
+         relatedToId: replyToEventId || undefined,
        });
       setTimeline(updatedTimeline);
       setShowCommentEditor(false);
+      setReplyToEventId(null);
     } catch (e: any) {
       alert(e?.message ?? "Error al agregar comentario");
     } finally {
@@ -1092,12 +1095,26 @@ export default function TareaFicha() {
     return normalizeTipo(evento.tipo) == "RESPUESTA_AGENTE" || evento.actorTipo == "AGENTE";
   }
 
+  function resolveSenderName(evento: TareaEvento): string {
+    if (isClientEvent(evento)) {
+      const payloadName = evento.payload?.creadoPorCliente?.nombre || evento.payload?.creadoPorCliente?.usuario;
+      return payloadName || tarea?.cliente?.codigo || "Cliente";
+    }
+    const payloadName = evento.payload?.creadoPorAgente?.nombre || evento.payload?.creadoPorAgente?.usuario;
+    const agente = agentes.find(a => a.id === evento.creadoPorAgenteId);
+    return payloadName || agente?.nombre || agente?.usuario || "Agente";
+  }
+
   // Filter comments (MENSAJE_CLIENTE, RESPUESTA_AGENTE, NOTA_INTERNA)
   const comments = timeline.filter((e) =>
     ["MENSAJE_CLIENTE", "RESPUESTA_AGENTE", "NOTA_INTERNA"].includes(normalizeTipo(e.tipo))
   );
 
-  const chronologicalOrder = [...comments].reverse();
+  const chronologicalOrder = [...comments].sort((a, b) => {
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    return aTime - bTime;
+  });
   const chronologicalNumbers = new Map<string, number>();
   chronologicalOrder.forEach((evento, index) => {
     chronologicalNumbers.set(evento.id, index + 1);
@@ -1118,10 +1135,15 @@ export default function TareaFicha() {
     }
   }
 
-  function resolveRelatedTo(eventoId: string): string {
-    const direct = chronologicalRelationships.get(eventoId);
+  function resolveRelatedTo(evento: TareaEvento): string {
+    const relatedTargetId = evento.payload?.relatedToId || evento.payload?.replyToId;
+    if (relatedTargetId) {
+      const number = chronologicalNumbers.get(relatedTargetId);
+      if (number) return `#${number}`;
+    }
+    const direct = chronologicalRelationships.get(evento.id);
     if (direct) return direct;
-    const idx = chronologicalOrder.findIndex((e) => e.id === eventoId);
+    const idx = chronologicalOrder.findIndex((e) => e.id === evento.id);
     if (idx === -1) return "";
     for (let i = idx - 1; i >= 0; i--) {
       if (isClientEvent(chronologicalOrder[i])) return `#${i + 1}`;
@@ -1158,13 +1180,13 @@ export default function TareaFicha() {
         display: "flex", 
         justifyContent: "space-between", 
         alignItems: "center", 
-        padding: "8px 16px",
+        padding: "6px 12px",
         borderBottom: "1px solid var(--border)",
         background: "var(--card-bg)",
         flexShrink: 0
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button className="btn" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => navigate("/")}>
+          <button className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => navigate("/")}>
             ← Volver
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1189,10 +1211,10 @@ export default function TareaFicha() {
         <div style={{ display: "flex", gap: 6 }}>
           {!isClosed && (
             <>
-              <button className="btn" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setEditing(!editing)}>
+              <button className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setEditing(!editing)}>
                 {editing ? "Cancelar" : "Editar"}
               </button>
-              <button className="btn primary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={handleClose}>
+              <button className="btn primary" style={{ padding: "4px 10px", fontSize: 12 }} onClick={handleClose}>
                 Cerrar Tarea
               </button>
             </>
@@ -1245,7 +1267,14 @@ export default function TareaFicha() {
                 </button>
               </div>
               {!isClosed && (
-                <button className="btn primary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setShowCommentEditor(true)}>
+                <button
+                  className="btn primary"
+                  style={{ padding: "4px 10px", fontSize: 11 }}
+                  onClick={() => {
+                    setReplyToEventId(null);
+                    setShowCommentEditor(true);
+                  }}
+                >
                   + Nota
                 </button>
               )}
@@ -1272,16 +1301,13 @@ export default function TareaFicha() {
                   <tbody>
                     {(() => {
                       const displayComments = commentsOrderAsc
-                        ? [...comments].reverse()
-                        : [...comments];
+                        ? [...chronologicalOrder]
+                        : [...chronologicalOrder].reverse();
 
                       return displayComments.map((evento) => {
                         const isSelected = selectedComment?.id === evento.id;
                         const chronologicalNumber = chronologicalNumbers.get(evento.id) || 0;
-                        const agente = agentes.find(a => a.id === evento.creadoPorAgenteId);
-                        const senderName = isClientEvent(evento) 
-                          ? (tarea.cliente?.codigo || "Cliente")
-                          : (agente?.nombre || "Agente");
+                        const senderName = resolveSenderName(evento);
                         const viaLabel = isClientEvent(evento) 
                           ? "Cliente" 
                           : normalizeTipo(evento.tipo) === "NOTA_INTERNA" 
@@ -1289,7 +1315,7 @@ export default function TareaFicha() {
                             : "Agente";
                         const isClientRow = isClientEvent(evento);
                         const isAgentRow = !isClientRow && viaLabel === "Agente";
-                        const relatedTo = !isClientRow ? resolveRelatedTo(evento.id) : "";
+                        const relatedTo = !isClientRow ? resolveRelatedTo(evento) : "";
                         const relDebug = relatedTo ? `Resp ${relatedTo}` : "-";
                         const subjectPreview = evento.cuerpo?.replace(/<[^>]*>/g, "").substring(0, 80) || "Sin contenido";
 
@@ -1360,7 +1386,7 @@ export default function TareaFicha() {
               <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                 {/* Article header - collapsible info */}
                 <div style={{ 
-                  padding: "10px 16px", 
+                  padding: "8px 12px", 
                   borderBottom: "1px solid var(--border)",
                   background: "var(--bg-secondary)",
                   flexShrink: 0
@@ -1373,7 +1399,14 @@ export default function TareaFicha() {
                           return idx >= 0 ? idx + 1 : "?";
                         })()} — {selectedComment.tipo === "MENSAJE_CLIENTE" ? "Mensaje Cliente" : selectedComment.tipo === "NOTA_INTERNA" ? "Nota Interna" : "Respuesta Agente"}</span>
                         <span style={{ color: "var(--muted)", fontWeight: 400 }}>— {formatDate(selectedComment.createdAt)}</span>
-                        {resolveRelatedTo(selectedComment.id) && (
+                        {selectedComment.tipo === "NOTA_INTERNA" && (
+                          <span style={{ fontSize: 10, padding: "2px 6px", backgroundColor: "#374151", color: "#fff", borderRadius: 4 }}>
+                            Interno
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", gap: 16, alignItems: "center" }}>
+                        {resolveRelatedTo(selectedComment) && (
                           <span style={{
                             fontSize: 10,
                             padding: "2px 6px",
@@ -1381,20 +1414,11 @@ export default function TareaFicha() {
                             background: "var(--bg-secondary)",
                             color: "var(--accent)",
                           }}>
-                            Relacionado con {resolveRelatedTo(selectedComment.id)}
+                            Relacionado con {resolveRelatedTo(selectedComment)}
                           </span>
                         )}
-                        {selectedComment.tipo === "NOTA_INTERNA" && (
-                          <span style={{ fontSize: 10, padding: "2px 6px", backgroundColor: "#374151", color: "#fff", borderRadius: 4 }}>
-                            Interno
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", gap: 16 }}>
                         <span>
-                          <strong>De:</strong> {selectedComment.tipo === "MENSAJE_CLIENTE" 
-                            ? (tarea.cliente?.codigo || "Cliente")
-                            : (agentes.find(a => a.id === selectedComment.creadoPorAgenteId)?.nombre || "Agente")}
+                          <strong>De:</strong> {resolveSenderName(selectedComment)}
                         </span>
                         {selectedComment.tipo !== "NOTA_INTERNA" && (
                           <span>
@@ -1411,7 +1435,14 @@ export default function TareaFicha() {
                         </>
                       )}
                       {!isClosed && (
-                        <button className="btn primary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setShowCommentEditor(true)}>
+                        <button
+                          className="btn primary"
+                          style={{ padding: "4px 10px", fontSize: 11 }}
+                          onClick={() => {
+                            setReplyToEventId(selectedComment?.id ?? null);
+                            setShowCommentEditor(true);
+                          }}
+                        >
                           Responder
                         </button>
                       )}
@@ -1422,7 +1453,7 @@ export default function TareaFicha() {
                 {/* Article body - maximum space for content */}
                 <div style={{ 
                   flex: 1, 
-                  padding: "16px 20px", 
+                  padding: "12px 16px", 
                   overflow: "auto",
                   fontSize: 14,
                   lineHeight: 1.7

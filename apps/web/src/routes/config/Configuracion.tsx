@@ -7,6 +7,7 @@ import {
   TipoSeguridad,
   MailConfig,
 } from "../../lib/api";
+import TipTapEditor from "../../components/TipTapEditor";
 
 export default function Configuracion() {
   const [loading, setLoading] = React.useState(true);
@@ -61,6 +62,7 @@ export default function Configuracion() {
         cuentaMail: config.cuentaMail || undefined,
         usuarioMail: config.usuarioMail || undefined,
         passwordMail: config.passwordMail || undefined,
+        firmaHtml: config.firmaHtml ?? undefined,
         azureClientId: config.azureClientId || undefined,
         azureTenantId: config.azureTenantId || undefined,
         azureClientSecret: config.azureClientSecret || undefined,
@@ -184,6 +186,17 @@ export default function Configuracion() {
                   </div>
                 </>
               )}
+
+              <div className="field full" style={{ marginTop: "8px" }}>
+                <div className="label">Firma de notificaciones</div>
+                <TipTapEditor
+                  content={config.firmaHtml || ""}
+                  onChange={(value) => setConfig({ ...config, firmaHtml: value })}
+                />
+                <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>
+                  Se agrega al final de cada notificación enviada al cliente.
+                </div>
+              </div>
 
               <div className="field">
                 <div className="label">Cuenta de Correo (From)</div>

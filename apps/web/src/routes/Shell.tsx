@@ -15,7 +15,9 @@ export default function Shell() {
   });
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  const agentMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleSection = (sectionName: string) => {
     setExpandedSections(prev => {
@@ -41,6 +43,9 @@ export default function Shell() {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
         closeAllMenus();
       }
+      if (agentMenuRef.current && !agentMenuRef.current.contains(event.target as Node)) {
+        setAgentMenuOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -55,13 +60,42 @@ export default function Shell() {
   }, [theme]);
 
 
+  const agentName = me?.nombre || me?.usuario || "Agente";
+  const initials = agentName
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="container">
       <header className="topbar-nav">
         <div className="brand">
-          <div className="logo">HD</div>
-          <div>
-            <h1>Helpdesk</h1>
+          <div className="agent-menu" ref={agentMenuRef}>
+            <button className="agent-trigger" onClick={() => setAgentMenuOpen((open) => !open)}>
+              <div className="agent-avatar">
+                {me?.avatar ? <img src={me.avatar} alt={agentName} /> : initials}
+              </div>
+              <div className="agent-meta">
+                <div className="agent-name">{agentName}</div>
+                <div className="agent-role">{me?.role || ""}</div>
+              </div>
+            </button>
+            {agentMenuOpen && (
+              <div className="agent-dropdown">
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    nav("/login");
+                  }}
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -103,23 +137,7 @@ export default function Shell() {
           )}
         </nav>
 
-        <div className="topbar-actions">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="badge">{me?.usuario} · {me?.role}</div>
-            <button
-              className="themeToggle"
-              aria-label="Cambiar tema"
-              title="Cambiar tema"
-              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            >
-              <span className={theme === "light" ? "on" : ""}>☀</span>
-              <span className={theme === "dark" ? "on" : ""}>🌙</span>
-            </button>
-            <button className="btn" onClick={() => { logout(); nav("/login"); }}>
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
+        <div className="topbar-actions" />
       </header>
 
       <main className="content">

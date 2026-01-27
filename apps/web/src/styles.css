@@ -41,22 +41,75 @@ input,button,select,textarea{font:inherit}
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:18px;
+  padding:10px 14px;
   border-bottom:1px solid var(--border);
   background: var(--card-bg);
   flex-wrap:wrap;
-  gap:16px;
+  gap:12px;
 }
 .brand{display:flex; gap:10px; align-items:center; margin:0}
 .logo{width:34px;height:34px;border-radius:10px;background:rgba(110,168,254,0.15);display:grid;place-items:center;border:1px solid var(--border)}
 .brand h1{font-size:14px;margin:0;letter-spacing:0.6px}
+.agent-menu{position:relative;display:flex;align-items:center}
+.agent-trigger{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:none;
+  border:none;
+  padding:4px 6px;
+  border-radius:10px;
+  cursor:pointer;
+  color:var(--text);
+}
+.agent-trigger:hover{background:rgba(15,75,96,0.06)}
+.agent-avatar{
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:rgba(110,168,254,0.12);
+  display:grid;
+  place-items:center;
+  font-size:12px;
+  font-weight:700;
+  color:var(--accent);
+  overflow:hidden;
+}
+.agent-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.agent-meta{display:flex;flex-direction:column;line-height:1.1}
+.agent-name{font-size:12px;font-weight:600}
+.agent-role{font-size:10px;color:var(--muted)}
+.agent-dropdown{
+  position:absolute;
+  top:calc(100% + 6px);
+  left:0;
+  min-width:180px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  padding:6px 0;
+  z-index:200;
+}
+.agent-dropdown button{
+  width:100%;
+  padding:8px 12px;
+  border:none;
+  background:none;
+  text-align:left;
+  font-size:13px;
+  cursor:pointer;
+  color:var(--text);
+}
+.agent-dropdown button:hover{background:rgba(15,75,96,0.06)}
 .badge{font-size:11px;color:var(--muted)}
 .topbar-actions{display:flex;align-items:center;gap:12px}
-.nav{display:flex;flex-direction:row;gap:6px;margin:0 16px;flex-wrap:wrap}
+.nav{display:flex;flex-direction:row;gap:4px;margin:0 12px;flex-wrap:wrap}
 .nav a{
-  padding:8px 12px;border-radius:12px;border:1px solid transparent;
+  padding:6px 10px;border-radius:10px;border:1px solid transparent;
   display:flex;align-items:center;color:var(--muted);white-space:nowrap;
-  font-size:14px;
+  font-size:13px;
 }
 .nav-section{
   position:relative;
@@ -65,13 +118,13 @@ input,button,select,textarea{font:inherit}
   display:flex;
   align-items:center;
   gap:6px;
-  padding:8px 12px;
-  border-radius:12px;
+  padding:6px 10px;
+  border-radius:10px;
   border:1px solid transparent;
   background:none;
   color:var(--muted);
   cursor:pointer;
-  font-size:14px;
+  font-size:13px;
   font-weight:500;
   white-space:nowrap;
 }

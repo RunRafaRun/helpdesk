@@ -1,6 +1,6 @@
 import React from "react";
 import "../../styles/collapsible.css";
-import { createAgente, updateAgente, listAgentes, listRoles, setAgenteRoles } from "../../lib/api";
+import { createAgente, updateAgente, listAgentes, listRoles, setAgenteRoles, deleteAgente } from "../../lib/api";
 
 export default function Agentes() {
   const [items, setItems] = React.useState<any[]>([]);
@@ -8,10 +8,12 @@ export default function Agentes() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  const [form, setForm] = React.useState({ nombre: "", usuario: "", password: "", role: "AGENTE", email: "" });
+  const [form, setForm] = React.useState({ nombre: "", usuario: "", password: "", role: "AGENTE", email: "", activo: true, avatar: "" });
   const [saving, setSaving] = React.useState(false);
   const [showForm, setShowForm] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [replacementId, setReplacementId] = React.useState("");
+  const [showInactive, setShowInactive] = React.useState(false);
 
   // Role assignment modal state
   const [editingAgente, setEditingAgente] = React.useState<any>(null);
@@ -21,7 +23,7 @@ export default function Agentes() {
     setLoading(true);
     setError(null);
     try {
-      const [agentes, roles] = await Promise.all([listAgentes(), listRoles()]);
+      const [agentes, roles] = await Promise.all([listAgentes({ includeInactive: showInactive }), listRoles()]);
       setItems(agentes);
       setAllRoles(roles);
     } catch (e: any) {
@@ -31,11 +33,12 @@ export default function Agentes() {
     }
   }
 
-  React.useEffect(() => { load(); }, []);
+  React.useEffect(() => { load(); }, [showInactive]);
 
   function resetForm() {
-    setForm({ nombre: "", usuario: "", password: "", role: "AGENTE", email: "" });
+    setForm({ nombre: "", usuario: "", password: "", role: "AGENTE", email: "", activo: true, avatar: "" });
     setEditingId(null);
+    setReplacementId("");
     setShowForm(false);
     setError(null);
   }
@@ -47,8 +50,11 @@ export default function Agentes() {
       usuario: item.usuario,
       password: "", // Don't populate password for security
       role: item.role,
-      email: item.email || ""
+      email: item.email || "",
+      avatar: item.avatar || "",
+      activo: item.activo !== false,
     });
+    setReplacementId("");
     setShowForm(true);
     setError(null);
   }
@@ -96,13 +102,18 @@ export default function Agentes() {
     setError(null);
     try {
       if (editingId) {
+        if (!form.activo && !replacementId) {
+          setError("Debe seleccionar un reemplazo para desactivar.");
+          return;
+        }
         await updateAgente(editingId, {
           nombre: form.nombre.trim(),
           usuario: form.usuario.trim(),
           role: form.role as any,
           email: form.email.trim() || null,
+          activo: form.activo,
           ...(form.password.trim() && { password: form.password.trim() }),
-        });
+        }, replacementId || undefined);
       } else {
         await createAgente({
           nombre: form.nombre.trim(),
@@ -110,6 +121,7 @@ export default function Agentes() {
           password: form.password.trim(),
           role: form.role as any,
           email: form.email.trim() || undefined,
+          activo: form.activo,
         });
       }
       resetForm();
@@ -121,18 +133,32 @@ export default function Agentes() {
     }
   }
 
-  async function onDelete(id: string) {
+  async function onDelete(item: any) {
     if (!confirm("¿Eliminar este agente?")) return;
     try {
-      const token = localStorage.getItem("accessToken");
-      await fetch(`http://localhost:8080/admin/agentes/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await deleteAgente(item.id, replacementId || undefined);
       await load();
+      setReplacementId("");
+      setEditingId(null);
     } catch (e: any) {
-      setError(e?.message ?? "Error al eliminar");
+      const message = e?.message ?? "Error al eliminar";
+      if (message.includes("tareas asociadas") || message.includes("reemplazo")) {
+        startEdit(item);
+        setError("Seleccione un reemplazo y vuelva a intentar.");
+        return;
+      }
+      setError(message);
     }
+  }
+
+  function handleAvatarFile(file?: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (result) setForm({ ...form, avatar: result });
+    };
+    reader.readAsDataURL(file);
   }
 
 return (
@@ -150,11 +176,21 @@ return (
      <div className="card" style={{ padding: 24 }}>
        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
          <h2 style={{ fontSize: 18, fontWeight: 600 }}>Gestión de Agentes</h2>
-         {!showForm && (
-           <button className="btn primary" onClick={() => setShowForm(true)}>
-             + Nuevo
-           </button>
-         )}
+         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+             <input
+               type="checkbox"
+               checked={showInactive}
+               onChange={(e) => setShowInactive(e.target.checked)}
+             />
+             Mostrar desactivados
+           </label>
+           {!showForm && (
+             <button className="btn primary" onClick={() => setShowForm(true)}>
+               + Nuevo
+             </button>
+           )}
+         </div>
        </div>
 
        {showForm && (
@@ -164,7 +200,7 @@ return (
                {error}
              </div>
            )}
-           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
              <div className="field">
                <div className="label">Nombre *</div>
                <input
@@ -183,28 +219,87 @@ return (
                  placeholder="usuario123"
                />
              </div>
-             <div className="field">
-               <div className="label">Email</div>
-               <input
-                 className="input"
-                 type="email"
-                 value={form.email}
-                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                 placeholder="usuario@empresa.com"
-               />
-             </div>
-             <div className="field">
-               <div className="label">Rol</div>
-               <select
-                 className="input"
-                 value={form.role}
-                 onChange={(e) => setForm({ ...form, role: e.target.value })}
-               >
-                 <option value="AGENTE">AGENTE</option>
-                 <option value="ADMIN">ADMIN</option>
-               </select>
-             </div>
-           </div>
+              <div className="field">
+                <div className="label">Email</div>
+                <input
+                  className="input"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="usuario@empresa.com"
+                />
+              </div>
+              <div className="field">
+                <div className="label">Avatar (URL o base64)</div>
+                <input
+                  className="input"
+                  type="text"
+                  value={form.avatar}
+                  onChange={(e) => setForm({ ...form, avatar: e.target.value })}
+                  placeholder="https://... o data:image/png;base64,..."
+                />
+                <input
+                  className="input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleAvatarFile(e.target.files?.[0] ?? null)}
+                />
+                <div className="small" style={{ marginTop: 4, color: "var(--muted)" }}>
+                  Si está vacío se mostrarán iniciales.
+                </div>
+                {form.avatar && (form.avatar.startsWith("http") || form.avatar.startsWith("data:image")) && (
+                  <div style={{ marginTop: 8 }}>
+                    <img src={form.avatar} alt="Avatar preview" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", border: "1px solid var(--border)" }} />
+                  </div>
+                )}
+                {form.avatar && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ marginTop: 8, padding: "6px 10px", fontSize: 12 }}
+                    onClick={() => setForm({ ...form, avatar: "" })}
+                  >
+                    Quitar avatar
+                  </button>
+                )}
+              </div>
+            <div className="field">
+              <div className="label">Rol</div>
+              <select
+                className="input"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+              >
+                <option value="AGENTE">AGENTE</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+            </div>
+            <div className="field">
+              <div className="label">Estado</div>
+              <select
+                className="input"
+                value={form.activo ? "ACTIVO" : "DESACTIVADO"}
+                onChange={(e) => setForm({ ...form, activo: e.target.value === "ACTIVO" })}
+              >
+                <option value="ACTIVO">Activo</option>
+                <option value="DESACTIVADO">Desactivado</option>
+              </select>
+            </div>
+          </div>
+          {editingId && (
+            <div className="field" style={{ marginBottom: 12 }}>
+              <div className="label">Reasignar tareas a</div>
+              <select className="input" value={replacementId} onChange={(e) => setReplacementId(e.target.value)}>
+                <option value="">-- Seleccionar --</option>
+                {items.filter((i) => i.id !== editingId && i.activo !== false).map((i) => (
+                  <option key={i.id} value={i.id}>{i.nombre} ({i.usuario})</option>
+                ))}
+              </select>
+              <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>
+                Requerido si hay tareas asociadas.
+              </div>
+            </div>
+          )}
            <div className="field" style={{ marginBottom: 12 }}>
              <div className="label">
                {editingId ? "Nueva Contraseña (opcional)" : "Contraseña *"}
@@ -250,8 +345,9 @@ return (
               <th>Usuario</th>
               <th>Nombre</th>
               <th>Correo</th>
-              <th>Roles RBAC</th>
-              <th />
+                <th>Roles RBAC</th>
+                <th>Estado</th>
+                <th />
             </tr>
           </thead>
           <tbody>
@@ -261,26 +357,27 @@ return (
                 <td>{a.nombre}</td>
                 <td>{a.email ?? "-"}</td>
                 <td>
-                  {(a.roles || []).length > 0
-                    ? (a.roles || []).map((r: any) => r.role.codigo).join(", ")
-                    : <span style={{ color: "#9CA3AF" }}>Sin roles</span>
-                  }
-                </td>
+                      {(a.roles || []).length > 0
+                        ? (a.roles || []).map((r: any) => r.role.codigo).join(", ")
+                        : <span style={{ color: "#9CA3AF" }}>Sin roles</span>
+                      }
+                    </td>
+                    <td>{a.activo !== false ? "Activo" : "Desactivado"}</td>
                  <td style={{ width: 250 }}>
                    <div style={{ display: "flex", gap: 6 }}>
-                     <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => startEdit(a)}>
-                       Editar
-                     </button>
-                     <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => openRoleModal(a)}>
-                       Roles
-                     </button>
-                     <button
-                       className="btn"
-                       style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
-                       onClick={() => onDelete(a.id)}
-                     >
-                       Eliminar
-                     </button>
+                      <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => startEdit(a)}>
+                        Editar
+                      </button>
+                      <button className="btn" style={{ padding: "4px 8px", fontSize: 12 }} onClick={() => openRoleModal(a)}>
+                        Roles
+                      </button>
+                      <button
+                        className="btn"
+                        style={{ padding: "4px 8px", fontSize: 12, color: "var(--danger)" }}
+                        onClick={() => onDelete(a)}
+                      >
+                        Eliminar
+                      </button>
                    </div>
                  </td>
               </tr>

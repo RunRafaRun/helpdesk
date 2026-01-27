@@ -51,6 +51,170 @@ function StatCard({ title, value, subtitle, color = "var(--accent)", icon }: { t
   );
 }
 
+function ReleaseStatusPanel({ releaseStatus }: { releaseStatus: DashboardStats["releaseStatus"] }) {
+  if (!releaseStatus) {
+    return (
+      <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <span>🚀</span> Estado de Releases
+        </div>
+        <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", padding: 12 }}>
+          Sin información de releases
+        </div>
+      </div>
+    );
+  }
+
+  const { desarrolloRelease, produccionRelease } = releaseStatus;
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+        <span>🚀</span> Estado de Releases
+      </div>
+
+      {/* Development Section */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{
+          fontSize: 9,
+          fontWeight: 600,
+          color: "#92400E",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          marginBottom: 6,
+          display: "flex",
+          alignItems: "center",
+          gap: 4
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B" }}></span>
+          En Desarrollo
+        </div>
+        {desarrolloRelease ? (
+          <div style={{
+            background: "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)",
+            borderRadius: 6,
+            padding: "8px 10px",
+            border: "1px solid #F59E0B30",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#92400E" }}>
+                {desarrolloRelease.codigo}
+              </div>
+              <div style={{
+                fontSize: 8,
+                fontWeight: 600,
+                color: "#92400E",
+                background: "#FEF3C7",
+                padding: "2px 6px",
+                borderRadius: 3,
+                border: "1px solid #F59E0B50",
+              }}>
+                DEV
+              </div>
+            </div>
+            {desarrolloRelease.descripcion && (
+              <div style={{ fontSize: 10, color: "#A16207", marginTop: 2 }}>
+                {desarrolloRelease.descripcion}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>
+            Sin release en desarrollo
+          </div>
+        )}
+      </div>
+
+      {/* Production Section */}
+      <div>
+        <div style={{
+          fontSize: 9,
+          fontWeight: 600,
+          color: "#065F46",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          marginBottom: 6,
+          display: "flex",
+          alignItems: "center",
+          gap: 4
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981" }}></span>
+          En Producción
+        </div>
+        {produccionRelease ? (
+          <div style={{
+            background: "linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)",
+            borderRadius: 6,
+            padding: "8px 10px",
+            border: "1px solid #10B98130",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#065F46" }}>
+                {produccionRelease.codigo}
+              </div>
+              <div style={{
+                fontSize: 8,
+                fontWeight: 600,
+                color: "#065F46",
+                background: "#D1FAE5",
+                padding: "2px 6px",
+                borderRadius: 3,
+                border: "1px solid #10B98150",
+              }}>
+                PROD
+              </div>
+            </div>
+
+            {/* Hotfixes for production release */}
+            {(produccionRelease.desarrolloHotfix || produccionRelease.produccionHotfix) && (
+              <div style={{
+                marginTop: 8,
+                paddingTop: 8,
+                borderTop: "1px dashed #10B98140",
+                display: "flex",
+                gap: 8,
+              }}>
+                {produccionRelease.produccionHotfix && (
+                  <div style={{
+                    flex: 1,
+                    background: "#ECFDF5",
+                    borderRadius: 4,
+                    padding: "4px 6px",
+                    border: "1px solid #10B98130",
+                  }}>
+                    <div style={{ fontSize: 8, color: "#065F46", fontWeight: 500 }}>HF Prod</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#065F46" }}>
+                      {produccionRelease.produccionHotfix.codigo}
+                    </div>
+                  </div>
+                )}
+                {produccionRelease.desarrolloHotfix && (
+                  <div style={{
+                    flex: 1,
+                    background: "#FFFBEB",
+                    borderRadius: 4,
+                    padding: "4px 6px",
+                    border: "1px solid #F59E0B30",
+                  }}>
+                    <div style={{ fontSize: 8, color: "#92400E", fontWeight: 500 }}>HF Dev</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E" }}>
+                      {produccionRelease.desarrolloHotfix.codigo}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>
+            Sin release en producción
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MiniBarChart({ data, colorMap }: { data: Array<{ label: string; value: number }>; colorMap?: Record<string, string> }) {
   const maxValue = Math.max(...data.map((d) => d.value), 1);
   return (
@@ -92,6 +256,11 @@ function stripHtml(html: string) {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || "";
+}
+
+function formatPercent(part: number, total: number) {
+  if (!total) return "0%";
+  return `${Math.round((part / total) * 100)}%`;
 }
 
 export default function Dashboard() {
@@ -153,6 +322,12 @@ export default function Dashboard() {
     }
   });
 
+  const totalByEstado = stats.byEstado.reduce((sum, e) => sum + e.count, 0);
+  const oldestComments = [...stats.latestComments]
+    .slice()
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .slice(0, 6);
+
   return (
     <div style={{ padding: "12px 20px" }}>
       {/* Header */}
@@ -172,86 +347,115 @@ export default function Dashboard() {
       </div>
 
       {/* Top Stats Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
         <StatCard title="Tareas Abiertas" value={stats.totals.abiertas} icon="📋" color="#3B82F6" />
         <StatCard title="Sin Asignar" value={stats.totals.sinAsignar} icon="⚠️" color="#F59E0B" />
         <StatCard title="Cerradas (Total)" value={stats.totals.cerradas} icon="✅" color="#10B981" />
-        {stats.latestRelease && (
-          <StatCard
-            title="Último Release"
-            value={stats.latestRelease.codigo}
-            subtitle={stats.latestRelease.hotfixes?.[0] ? `HF: ${stats.latestRelease.hotfixes[0].codigo}` : undefined}
-            icon="🚀"
-            color="#8B5CF6"
-          />
-        )}
       </div>
 
-      {/* Main Content Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 280px", gap: 12 }}>
-        {/* Left Column - Charts */}
+      {/* Main Content */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 12 }}>
+        {/* Left Column - Tables */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* By Estado */}
+          {/* Tickets Nuevos */}
+          <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Tickets Nuevos</div>
+              <button className="btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => navigate("/tareas")}>Ver todo</button>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-secondary)" }}>
+                  <th style={{ padding: "6px 8px", textAlign: "left", width: 90, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>TICKET#</th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", width: 90, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>ANTIG.</th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>TITULO</th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", width: 100, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>ESTADO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.latestComments.slice(0, 5).map((c) => (
+                  <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/tareas/${c.tarea.id}`)}>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", color: "var(--accent)", fontWeight: 600 }}>#{c.tarea.numero}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>{formatDateTime(c.createdAt)}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.tarea.titulo}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)" }}>Nuevo</td>
+                  </tr>
+                ))}
+                {stats.latestComments.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "12px", textAlign: "center", color: "var(--muted)" }}>Sin tickets nuevos</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Resumen por Estado */}
+          <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Resumen de Tareas por Estado</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-secondary)" }}>
+                  <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>ESTADO</th>
+                  <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>TOTAL</th>
+                  <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.byEstado.map((e) => (
+                  <tr key={e.estado.codigo}>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)" }}>{e.estado.codigo}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600 }}>{e.count}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", textAlign: "right", color: "var(--muted)" }}>{formatPercent(e.count, totalByEstado)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Backlog más antiguo */}
+          <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Backlog más antiguo</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-secondary)" }}>
+                  <th style={{ padding: "6px 8px", textAlign: "left", width: 90, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>TICKET#</th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", width: 120, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>ULT. MOV.</th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>TITULO</th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", width: 90, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>CLIENTE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {oldestComments.map((c) => (
+                  <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/tareas/${c.tarea.id}`)}>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", color: "var(--accent)", fontWeight: 600 }}>#{c.tarea.numero}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>{formatDateTime(c.createdAt)}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.tarea.titulo}</td>
+                    <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)" }}>{c.tarea.cliente.codigo}</td>
+                  </tr>
+                ))}
+                {oldestComments.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "12px", textAlign: "center", color: "var(--muted)" }}>Sin backlog antiguo</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Right Column - Summary / Panels */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Estado por Estado (compact) */}
           <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Tareas por Estado</div>
             <MiniBarChart data={estadoData} colorMap={ESTADO_COLORS} />
           </div>
 
-          {/* By Tipo */}
-          <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Tareas por Tipo</div>
-            <MiniBarChart data={tipoData} />
-          </div>
-        </div>
-
-        {/* Middle Column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* By Prioridad */}
+          {/* Prioridad */}
           <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Tareas por Prioridad</div>
             <MiniBarChart data={prioridadData} colorMap={dynamicPrioridadColors} />
-          </div>
-
-          {/* By Cliente (Top 10) */}
-          <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Top 10 Clientes</div>
-            <MiniBarChart data={clienteData} />
-          </div>
-        </div>
-
-        {/* Right Column - Activity Feed */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Next Releases */}
-          <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid var(--border)" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Próximos Releases</div>
-            {stats.nextReleases.length === 0 ? (
-              <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", padding: 12 }}>Sin releases planificados</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {stats.nextReleases.slice(0, 4).map((r) => (
-                  <div
-                    key={r.id}
-                    style={{
-                      padding: "6px 8px",
-                      background: "#F9FAFB",
-                      borderRadius: 5,
-                      fontSize: 11,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => navigate(`/clientes/${r.cliente.codigo}/ficha`)}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontWeight: 600, color: "#3B82F6" }}>{r.cliente.codigo}</span>
-                      <span style={{ fontSize: 10, color: "var(--muted)" }}>{formatDate(r.fechaPrevista)}</span>
-                    </div>
-                    <div style={{ marginTop: 1 }}>
-                      <span style={{ fontWeight: 500 }}>{r.release.codigo}</span>
-                      {r.hotfix && <span style={{ color: "var(--muted)" }}> / {r.hotfix.codigo}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Latest Comments */}
@@ -296,6 +500,9 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* Release Status Panel */}
+          <ReleaseStatusPanel releaseStatus={stats.releaseStatus} />
         </div>
       </div>
 

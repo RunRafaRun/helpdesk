@@ -1,4 +1,4 @@
-export type Me = { id: string; usuario: string; role: string; roles: string[]; permisos: string[] } | null;
+export type Me = { id: string; usuario: string; role: string; roles: string[]; permisos: string[]; nombre?: string; avatar?: string | null } | null;
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
 
@@ -47,18 +47,18 @@ export async function me(): Promise<Me> {
   }
 }
 
-export type Agente = { id: string; nombre: string; usuario: string; email?: string | null; role: "ADMIN" | "AGENTE"; activo: boolean; createdAt: string };
+export type Agente = { id: string; nombre: string; usuario: string; email?: string | null; role: "ADMIN" | "AGENTE"; activo: boolean; createdAt: string; avatar?: string | null };
 
 export async function listAgentes(opts?: { includeInactive?: boolean }) {
   const qs = opts?.includeInactive ? "?includeInactive=1" : "";
   return request<Agente[]>(`/admin/agentes${qs}`);
 }
 
-export async function createAgente(input: { nombre: string; usuario: string; password: string; role?: "ADMIN" | "AGENTE"; email?: string; activo?: boolean }) {
+export async function createAgente(input: { nombre: string; usuario: string; password: string; role?: "ADMIN" | "AGENTE"; email?: string; activo?: boolean; avatar?: string | null }) {
   return request<Agente>("/admin/agentes", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateAgente(id: string, input: { nombre?: string; usuario?: string; password?: string; role?: "ADMIN" | "AGENTE"; email?: string | null; activo?: boolean }, replacementId?: string) {
+export async function updateAgente(id: string, input: { nombre?: string; usuario?: string; password?: string; role?: "ADMIN" | "AGENTE"; email?: string | null; activo?: boolean; avatar?: string | null }, replacementId?: string) {
   const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
   return request<Agente>(`/admin/agentes/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
 }
@@ -434,6 +434,7 @@ export type MailConfig = {
   cuentaMail: string | null;
   usuarioMail: string | null;
   passwordMail: string | null;
+  firmaHtml?: string | null;
   azureClientId: string | null;
   azureTenantId: string | null;
   azureClientSecret: string | null;
@@ -451,6 +452,7 @@ export async function updateMailConfig(input: {
   cuentaMail?: string;
   usuarioMail?: string;
   passwordMail?: string;
+  firmaHtml?: string | null;
   azureClientId?: string;
   azureTenantId?: string;
   azureClientSecret?: string;
@@ -693,6 +695,7 @@ export async function addComentarioTarea(id: string, input: {
   cuerpo: string;
   canal?: string;
   visibleParaCliente?: boolean;
+  relatedToId?: string;
   notifyAgentIds?: string[]; // For future notification system (not currently used)
 }) {
   // Remove notifyAgentIds before sending to API as it's not expected by the backend yet
