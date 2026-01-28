@@ -207,32 +207,76 @@ The application includes a reusable text template system for comments and notifi
 - `activo` (Boolean) - Active/inactive status
 
 **Wildcards (Dynamic Placeholders)**:
-Templates support wildcards that are replaced with actual values at runtime:
+Templates and workflow subjects support wildcards that are replaced with actual values at runtime:
 
-| Wildcard | Description |
-|----------|-------------|
-| `{{cliente.codigo}}` | Client code |
-| `{{cliente.descripcion}}` | Client description |
-| `{{cliente.jefeProyecto1}}` | Project manager 1 |
-| `{{cliente.jefeProyecto2}}` | Project manager 2 |
-| `{{tarea.numero}}` | Task number |
-| `{{tarea.titulo}}` | Task title |
-| `{{tarea.estado}}` | Task status code |
-| `{{tarea.prioridad}}` | Task priority code |
-| `{{tarea.modulo}}` | Task module code |
-| `{{agente.nombre}}` | Agent name |
-| `{{agente.email}}` | Agent email |
-| `{{fecha.actual}}` | Current date (DD/MM/YYYY) |
-| `{{fecha.hora}}` | Current time (HH:MM) |
+| Category | Wildcard | Description |
+|----------|----------|-------------|
+| **Tarea** | `{{tarea.numero}}` | Task number (e.g., 202512345) |
+| | `{{tarea.titulo}}` | Task title |
+| | `{{tarea.link}}` | Direct URL to the task |
+| | `{{tarea.fechaCreacion}}` | Creation date/time |
+| | `{{tarea.fechaCierre}}` | Closure date/time |
+| | `{{tarea.reproducido}}` | Bug reproduced (Si/No) |
+| **Estado** | `{{estado.codigo}}` | Status code |
+| | `{{estado.descripcion}}` | Status description |
+| **Tipo** | `{{tipo.codigo}}` | Task type code |
+| | `{{tipo.descripcion}}` | Task type description |
+| **Prioridad** | `{{prioridad.codigo}}` | Priority code |
+| | `{{prioridad.descripcion}}` | Priority description |
+| | `{{prioridad.color}}` | Priority color |
+| **Modulo** | `{{modulo.codigo}}` | Module code |
+| | `{{modulo.descripcion}}` | Module description |
+| **Release** | `{{release.codigo}}` | Release code (e.g., R35) |
+| | `{{release.descripcion}}` | Release description |
+| | `{{release.rama}}` | Branch (DESARROLLO/PRODUCCION) |
+| **Hotfix** | `{{hotfix.codigo}}` | Hotfix code |
+| | `{{hotfix.descripcion}}` | Hotfix description |
+| **Cliente** | `{{cliente.codigo}}` | Client code |
+| | `{{cliente.nombre}}` | Client name |
+| | `{{cliente.descripcion}}` | Client description |
+| | `{{cliente.jefeProyecto1}}` | Project manager 1 |
+| | `{{cliente.jefeProyecto2}}` | Project manager 2 |
+| | `{{cliente.licencia}}` | License type |
+| **Unidad** | `{{unidad.codigo}}` | Commercial unit code |
+| | `{{unidad.nombre}}` | Commercial unit name |
+| | `{{unidad.scope}}` | Scope (HOTEL/CENTRAL/TODOS) |
+| **Agente** | `{{agente.nombre}}` | Event agent name |
+| | `{{agente.email}}` | Event agent email |
+| **Asignado** | `{{agenteAsignado.nombre}}` | Assigned agent name |
+| | `{{agenteAsignado.email}}` | Assigned agent email |
+| **Creador** | `{{agenteCreador.nombre}}` | Creator agent name |
+| | `{{agenteCreador.email}}` | Creator agent email |
+| **Revisor** | `{{agenteRevisor.nombre}}` | Reviewer agent name |
+| | `{{agenteRevisor.email}}` | Reviewer agent email |
+| **Usuario** | `{{usuarioCreador.nombre}}` | Client user creator name |
+| | `{{usuarioCreador.email}}` | Client user creator email |
+| **Evento** | `{{evento.fecha}}` | Event date/time |
+| | `{{evento.contenido}}` | Comment/message content |
+| | `{{evento.tipo}}` | Event type |
+| **Cambio** | `{{cambio.campo}}` | Changed field name |
+| | `{{cambio.anterior}}` | Previous value |
+| | `{{cambio.nuevo}}` | New value |
+| **Destinatario** | `{{destinatario.nombre}}` | Recipient name |
+| | `{{destinatario.email}}` | Recipient email |
+| **Fecha** | `{{fecha.actual}}` | Current date (DD/MM/YYYY) |
+| | `{{fecha.hora}}` | Current time (HH:MM) |
+| | `{{fecha.completa}}` | Current date and time |
 
 **Frontend Components**:
 - `apps/web/src/lib/wildcards.ts` - Wildcard definitions and resolution utilities
+- `apps/web/src/components/WildcardPicker.tsx` - Reusable searchable wildcard dropdown
 - `apps/web/src/components/TemplateSelector.tsx` - Reusable dropdown for template selection
 - `apps/web/src/routes/config/Plantillas.tsx` - Template management config page
+
+**Wildcard Insertion**:
+- Wildcards insert at cursor position (not at end)
+- TipTapEditor exposes `insertText()` method via ref
+- Standard inputs track cursor position for insertion
 
 **Integration Points**:
 - Task comment editor (TareaFicha.tsx) - Insert templates in comments
 - Mass notifications (NotificacionesMasivas.tsx) - Use templates in notification body
+- Workflow custom subject (Workflows.tsx) - Use wildcards in email subject
 
 #### Notification Workflows System
 
@@ -289,6 +333,19 @@ EQUALS, NOT_EQUALS, IN, NOT_IN, IS_NULL, IS_NOT_NULL, CONTAINS, STARTS_WITH
 
 **OR Group Logic**:
 Conditions within the same `orGroup` are evaluated with OR logic. Different groups are evaluated with AND logic. This allows complex conditions like: "(cliente=A OR cliente=B) AND (prioridad=ALTA)".
+
+**Workflow Actions (WorkflowActionType enum)**:
+Workflows can automatically perform actions on the task when triggered:
+| Action | Description |
+|--------|-------------|
+| CAMBIAR_ESTADO | Change task status |
+| CAMBIAR_PRIORIDAD | Change task priority |
+| CAMBIAR_TIPO | Change task type |
+| ASIGNAR_AGENTE | Assign task to agent |
+| CAMBIAR_MODULO | Change task module |
+| CAMBIAR_RELEASE | Change task release |
+
+Actions are executed in order after the notification is queued. Each action creates a timeline event marked as automatic. Loop prevention is built-in via `fromWorkflow` flag.
 
 **Backend Components**:
 - `apps/api/src/admin/workflows.admin.controller.ts` - CRUD endpoints for workflows

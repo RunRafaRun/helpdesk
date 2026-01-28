@@ -6,13 +6,9 @@ import {
   updatePlantilla,
   deletePlantilla,
 } from "../../lib/api";
-import TipTapEditor from "../../components/TipTapEditor";
-import {
-  WILDCARD_LIST,
-  getWildcardsByCategory,
-  resolveWildcards,
-  getSampleContext,
-} from "../../lib/wildcards";
+import TipTapEditor, { TipTapEditorRef } from "../../components/TipTapEditor";
+import WildcardPicker from "../../components/WildcardPicker";
+import { resolveWildcards, getSampleContext } from "../../lib/wildcards";
 
 export default function Plantillas() {
   const [items, setItems] = React.useState<Plantilla[]>([]);
@@ -35,7 +31,9 @@ export default function Plantillas() {
 
   // Wildcard picker
   const [showWildcardPicker, setShowWildcardPicker] = React.useState(false);
-  const wildcardsByCategory = getWildcardsByCategory();
+
+  // TipTap editor ref for inserting wildcards at cursor
+  const editorRef = React.useRef<TipTapEditorRef>(null);
 
   // Available categories from existing templates
   const existingCategories = React.useMemo(() => {
@@ -139,9 +137,10 @@ export default function Plantillas() {
   }
 
   function insertWildcard(token: string) {
-    // Insert the wildcard token at cursor position or at the end
-    const newTexto = texto === "<p></p>" ? `<p>${token}</p>` : texto.replace(/<\/p>\s*$/, ` ${token}</p>`);
-    setTexto(newTexto);
+    // Insert wildcard at cursor position using TipTap editor
+    if (editorRef.current) {
+      editorRef.current.insertText(token);
+    }
     setShowWildcardPicker(false);
   }
 
@@ -272,52 +271,11 @@ export default function Plantillas() {
                       + Variable
                     </button>
                     {showWildcardPicker && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "100%",
-                          right: 0,
-                          marginTop: 4,
-                          background: "var(--card-bg)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 8,
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                          zIndex: 100,
-                          width: 320,
-                          maxHeight: 400,
-                          overflow: "auto",
-                        }}
-                      >
-                        {Object.entries(wildcardsByCategory).map(([category, wildcards]) => (
-                          <div key={category}>
-                            <div style={{ padding: "8px 12px", background: "var(--bg-secondary)", fontWeight: 600, fontSize: 12, color: "var(--muted)" }}>
-                              {category}
-                            </div>
-                            {wildcards.map((w) => (
-                              <button
-                                key={w.token}
-                                type="button"
-                                onClick={() => insertWildcard(w.token)}
-                                style={{
-                                  display: "block",
-                                  width: "100%",
-                                  padding: "8px 12px",
-                                  textAlign: "left",
-                                  background: "transparent",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  fontSize: 13,
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-secondary)")}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                              >
-                                <div style={{ fontWeight: 500 }}>{w.label}</div>
-                                <code style={{ fontSize: 11, color: "var(--muted)" }}>{w.token}</code>
-                              </button>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
+                      <WildcardPicker
+                        onSelect={insertWildcard}
+                        onClose={() => setShowWildcardPicker(false)}
+                        position="right"
+                      />
                     )}
                   </div>
                   <button
@@ -330,7 +288,7 @@ export default function Plantillas() {
                   </button>
                 </div>
               </div>
-              <TipTapEditor content={texto} onChange={setTexto} />
+              <TipTapEditor ref={editorRef} content={texto} onChange={setTexto} />
               <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>
                 Use variables como {"{{cliente.codigo}}"} para insertar datos dinamicos
               </div>

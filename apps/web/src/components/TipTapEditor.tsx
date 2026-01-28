@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -20,6 +20,12 @@ interface TipTapEditorProps {
   content: string;
   onChange: (html: string) => void;
   placeholder?: string;
+}
+
+// Expose methods via ref
+export interface TipTapEditorRef {
+  insertText: (text: string) => void;
+  focus: () => void;
 }
 
 // SVG Icons for toolbar
@@ -547,7 +553,8 @@ const MenuBar = ({ editor, onImageInsert }: { editor: any; onImageInsert: () => 
   );
 };
 
-export default function TipTapEditor({ content, onChange, placeholder }: TipTapEditorProps) {
+const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(
+  function TipTapEditor({ content, onChange, placeholder }, ref) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -597,6 +604,18 @@ export default function TipTapEditor({ content, onChange, placeholder }: TipTapE
       },
     },
   });
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    insertText: (text: string) => {
+      if (editor) {
+        editor.chain().focus().insertContent(text).run();
+      }
+    },
+    focus: () => {
+      editor?.chain().focus().run();
+    },
+  }), [editor]);
 
   // Update editor content when content prop changes
   React.useEffect(() => {
@@ -803,4 +822,6 @@ export default function TipTapEditor({ content, onChange, placeholder }: TipTapE
       `}</style>
     </div>
   );
-}
+});
+
+export default TipTapEditor;

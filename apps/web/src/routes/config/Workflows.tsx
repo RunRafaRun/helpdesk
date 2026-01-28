@@ -20,18 +20,22 @@ import {
   WorkflowDetail,
   WorkflowCondition,
   WorkflowRecipient,
+  WorkflowAction,
   WorkflowTrigger,
   WorkflowConditionField,
   WorkflowConditionOperator,
   WorkflowRecipientType,
+  WorkflowActionType,
   WORKFLOW_TRIGGER_LABELS,
   CONDITION_FIELD_LABELS,
   CONDITION_OPERATOR_LABELS,
   RECIPIENT_TYPE_LABELS,
+  ACTION_TYPE_LABELS,
   Plantilla,
   Agente,
   Cliente,
 } from "../../lib/api";
+import WildcardPicker from "../../components/WildcardPicker";
 
 // Types for lookups
 type LookupItem = { id: string; codigo?: string; nombre?: string; descripcion?: string | null };
@@ -53,6 +57,12 @@ const ID_FIELDS: WorkflowConditionField[] = [
   "ESTADO_NUEVO_ID",
   "PRIORIDAD_ANTERIOR_ID",
   "PRIORIDAD_NUEVA_ID",
+  "TIPO_ANTERIOR_ID",
+  "TIPO_NUEVO_ID",
+  "MODULO_ANTERIOR_ID",
+  "MODULO_NUEVO_ID",
+  "RELEASE_ANTERIOR_ID",
+  "RELEASE_NUEVO_ID",
 ];
 
 // Operators that don't require a value
@@ -86,6 +96,11 @@ export default function Workflows() {
   const [ccJefeProyecto2, setCcJefeProyecto2] = React.useState(false);
   const [conditions, setConditions] = React.useState<WorkflowCondition[]>([]);
   const [recipients, setRecipients] = React.useState<WorkflowRecipient[]>([]);
+  const [actions, setActions] = React.useState<WorkflowAction[]>([]);
+
+  // Wildcard picker for asunto
+  const [showAsuntoWildcardPicker, setShowAsuntoWildcardPicker] = React.useState(false);
+  const asuntoInputRef = React.useRef<HTMLInputElement>(null);
 
   // Lookups
   const [plantillas, setPlantillas] = React.useState<Plantilla[]>([]);
@@ -159,8 +174,10 @@ export default function Workflows() {
     setCcJefeProyecto2(false);
     setConditions([]);
     setRecipients([]);
+    setActions([]);
     setEditingId(null);
     setError(null);
+    setShowAsuntoWildcardPicker(false);
   }
 
   async function handleEdit(id: string) {
@@ -179,6 +196,7 @@ export default function Workflows() {
       setCcJefeProyecto2(detail.ccJefeProyecto2);
       setConditions(detail.conditions);
       setRecipients(detail.recipients);
+      setActions(detail.actions || []);
       setShowModal(true);
     } catch (e: any) {
       setError(e?.message ?? "Error al cargar workflow");
@@ -191,8 +209,9 @@ export default function Workflows() {
       setError("El nombre es obligatorio");
       return;
     }
-    if (recipients.length === 0) {
-      setError("Debe agregar al menos un destinatario");
+    // Recipients are optional if there are actions
+    if (recipients.length === 0 && actions.length === 0) {
+      setError("Debe agregar al menos un destinatario o una accion");
       return;
     }
 
@@ -212,6 +231,7 @@ export default function Workflows() {
         ccJefeProyecto2,
         conditions,
         recipients,
+        actions,
       };
 
       if (editingId) {
@@ -295,6 +315,42 @@ export default function Workflows() {
     setRecipients(recipients.filter((_, i) => i !== index));
   }
 
+  function addAction() {
+    setActions([
+      ...actions,
+      { actionType: "CAMBIAR_ESTADO", value: "", orden: actions.length },
+    ]);
+  }
+
+  function updateAction(index: number, updates: Partial<WorkflowAction>) {
+    const newActions = [...actions];
+    newActions[index] = { ...newActions[index], ...updates };
+    setActions(newActions);
+  }
+
+  function removeAction(index: number) {
+    setActions(actions.filter((_, i) => i !== index));
+  }
+
+  function getActionValueOptions(actionType: WorkflowActionType): LookupItem[] {
+    switch (actionType) {
+      case "CAMBIAR_ESTADO":
+        return estados;
+      case "CAMBIAR_PRIORIDAD":
+        return prioridades;
+      case "CAMBIAR_TIPO":
+        return tipos;
+      case "ASIGNAR_AGENTE":
+        return agentes.map((a) => ({ id: a.id, nombre: a.nombre }));
+      case "CAMBIAR_MODULO":
+        return modulos;
+      case "CAMBIAR_RELEASE":
+        return releases;
+      default:
+        return [];
+    }
+  }
+
   function getConditionValueOptions(field: WorkflowConditionField): LookupItem[] {
     switch (field) {
       case "CLIENTE_ID":
@@ -304,15 +360,21 @@ export default function Workflows() {
       case "ESTADO_NUEVO_ID":
         return estados;
       case "TIPO_ID":
+      case "TIPO_ANTERIOR_ID":
+      case "TIPO_NUEVO_ID":
         return tipos;
       case "PRIORIDAD_ID":
       case "PRIORIDAD_ANTERIOR_ID":
       case "PRIORIDAD_NUEVA_ID":
         return prioridades;
       case "MODULO_ID":
+      case "MODULO_ANTERIOR_ID":
+      case "MODULO_NUEVO_ID":
         return modulos;
       case "RELEASE_ID":
       case "HOTFIX_ID":
+      case "RELEASE_ANTERIOR_ID":
+      case "RELEASE_NUEVO_ID":
         return releases;
       case "ASIGNADO_A_ID":
       case "CREADO_POR_AGENTE_ID":
@@ -493,6 +555,7 @@ export default function Workflows() {
                 <th>Trigger</th>
                 <th>Condiciones</th>
                 <th>Destinatarios</th>
+                <th>Acciones Auto</th>
                 <th>Plantilla</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -534,6 +597,11 @@ export default function Workflows() {
                   <td style={{ textAlign: "center" }}>
                     <span style={{ fontSize: "14px", fontWeight: 500 }}>
                       {item.recipientsCount}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                      {item.actionsCount}
                     </span>
                   </td>
                   <td>
@@ -733,12 +801,53 @@ export default function Workflows() {
                     </div>
                     <div className="field">
                       <div className="label">Asunto personalizado</div>
-                      <input
-                        className="input"
-                        value={asuntoCustom}
-                        onChange={(e) => setAsuntoCustom(e.target.value)}
-                        placeholder="Dejar vacio para usar asunto por defecto"
-                      />
+                      <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+                        <input
+                          ref={asuntoInputRef}
+                          className="input"
+                          style={{ flex: 1 }}
+                          value={asuntoCustom}
+                          onChange={(e) => setAsuntoCustom(e.target.value)}
+                          placeholder="Dejar vacio para usar asunto por defecto"
+                        />
+                        <div style={{ position: "relative" }}>
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{ height: "100%", padding: "6px 10px", fontSize: 12 }}
+                            onClick={() => setShowAsuntoWildcardPicker(!showAsuntoWildcardPicker)}
+                            title="Insertar variable"
+                          >
+                            {"{{}}"}
+                          </button>
+                          {showAsuntoWildcardPicker && (
+                            <WildcardPicker
+                              onSelect={(token) => {
+                                // Insert at cursor position
+                                const input = asuntoInputRef.current;
+                                if (input) {
+                                  const start = input.selectionStart ?? asuntoCustom.length;
+                                  const end = input.selectionEnd ?? asuntoCustom.length;
+                                  const newValue = asuntoCustom.slice(0, start) + token + asuntoCustom.slice(end);
+                                  setAsuntoCustom(newValue);
+                                  // Set cursor after inserted token
+                                  setTimeout(() => {
+                                    input.focus();
+                                    input.setSelectionRange(start + token.length, start + token.length);
+                                  }, 0);
+                                } else {
+                                  setAsuntoCustom(asuntoCustom + token);
+                                }
+                              }}
+                              onClose={() => setShowAsuntoWildcardPicker(false)}
+                              position="right"
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                        Usa variables como {"{{tarea.numero}}"} para insertar datos dinamicos
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "20px", marginTop: "12px" }}>
@@ -1058,6 +1167,123 @@ export default function Workflows() {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div
+                  style={{
+                    background: "var(--bg-secondary)",
+                    padding: "16px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <h3 style={{ fontSize: "14px", fontWeight: 600 }}>
+                      Acciones Automaticas{" "}
+                      <span style={{ fontWeight: 400, color: "var(--muted)" }}>
+                        (opcional - cambios automaticos a aplicar en la tarea)
+                      </span>
+                    </h3>
+                    <button type="button" className="btn small" onClick={addAction}>
+                      + Agregar
+                    </button>
+                  </div>
+
+                  {actions.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "20px",
+                        textAlign: "center",
+                        color: "var(--muted)",
+                        fontSize: "13px",
+                      }}
+                    >
+                      Sin acciones - este workflow solo enviara notificaciones
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {actions.map((action, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr 40px",
+                            gap: "8px",
+                            alignItems: "center",
+                            padding: "8px",
+                            background: "var(--card-bg)",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          <div>
+                            <select
+                              className="input"
+                              style={{ padding: "4px 6px", fontSize: "12px" }}
+                              value={action.actionType}
+                              onChange={(e) =>
+                                updateAction(index, {
+                                  actionType: e.target.value as WorkflowActionType,
+                                  value: "",
+                                })
+                              }
+                            >
+                              {Object.entries(ACTION_TYPE_LABELS).map(([key, label]) => (
+                                <option key={key} value={key}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <select
+                              className="input"
+                              style={{ padding: "4px 6px", fontSize: "12px" }}
+                              value={action.value || ""}
+                              onChange={(e) =>
+                                updateAction(index, { value: e.target.value })
+                              }
+                            >
+                              <option value="">-- Seleccionar valor --</option>
+                              {getActionValueOptions(action.actionType).map((opt) => (
+                                <option key={opt.id} value={opt.id}>
+                                  {opt.codigo || opt.nombre || opt.descripcion || opt.id}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeAction(index)}
+                            style={{
+                              border: "none",
+                              background: "none",
+                              color: "#DC2626",
+                              cursor: "pointer",
+                              fontSize: "18px",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          color: "var(--muted)",
+                          marginTop: "4px",
+                        }}
+                      >
+                        Las acciones se ejecutan en orden cuando el workflow coincide. Los cambios generados por acciones no vuelven a disparar workflows (prevencion de loops).
+                      </div>
                     </div>
                   )}
                 </div>
