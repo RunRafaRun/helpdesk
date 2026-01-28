@@ -120,7 +120,7 @@ export class TareasService {
       include: { cliente: true, unidadComercial: true, tipo: true, estado: true, prioridad: true, modulo: true, release: true, hotfix: true },
     });
 
-    await this.prisma.tareaEvento.create({
+    const eventoInicial = await this.prisma.tareaEvento.create({
       data: {
         tareaId: tarea.id,
         tipo: EventoTipo.MENSAJE_CLIENTE,
@@ -130,6 +130,13 @@ export class TareasService {
         visibleEnTimeline: true,
         visibleParaCliente: true,
       },
+    });
+
+    // Queue notification for task creation (TAREA_CREADA trigger)
+    await this.notificacionTareaService.queueNotificationByTrigger({
+      tareaId: tarea.id,
+      eventoId: eventoInicial.id,
+      trigger: "TAREA_CREADA",
     });
 
     return this.obtener(tarea.id);
@@ -211,6 +218,15 @@ export class TareasService {
         tareaId: id,
         eventoId: evento.id,
         eventoTipo: EventoTipo.MENSAJE_CLIENTE,
+      });
+    }
+
+    // Queue notification for internal notes
+    if (tipo === EventoTipo.NOTA_INTERNA) {
+      await this.notificacionTareaService.queueNotification({
+        tareaId: id,
+        eventoId: evento.id,
+        eventoTipo: EventoTipo.NOTA_INTERNA,
       });
     }
 
@@ -449,15 +465,39 @@ export class TareasService {
         },
       });
 
-      // Queue notification for status changes
+      // Queue notification for ALL change events with context
+      // Build change context based on event type
+      const changeContext: Record<string, string | null | undefined> = {};
+
       if (change.eventoTipo === EventoTipo.CAMBIO_ESTADO) {
-        await this.notificacionTareaService.queueNotification({
-          tareaId: id,
-          eventoId: evento.id,
-          eventoTipo: EventoTipo.CAMBIO_ESTADO,
-        });
+        changeContext.estadoAnteriorId = tarea.estadoId ?? undefined;
+        changeContext.estadoNuevoId = dto.estadoId;
+      } else if (change.eventoTipo === EventoTipo.CAMBIO_PRIORIDAD) {
+        changeContext.prioridadAnteriorId = tarea.prioridadId;
+        changeContext.prioridadNuevaId = dto.prioridadId;
+      } else if (change.eventoTipo === EventoTipo.CAMBIO_TIPO) {
+        changeContext.tipoAnteriorId = tarea.tipoId;
+        changeContext.tipoNuevoId = dto.tipoId;
+      } else if (change.eventoTipo === EventoTipo.CAMBIO_MODULO) {
+        changeContext.moduloAnteriorId = tarea.moduloId ?? undefined;
+        changeContext.moduloNuevoId = dto.moduloId ?? undefined;
+      } else if (change.eventoTipo === EventoTipo.CAMBIO_RELEASE_HOTFIX) {
+        changeContext.releaseAnteriorId = tarea.releaseId ?? undefined;
+        changeContext.releaseNuevoId = dto.releaseId ?? undefined;
       }
+
+      await this.notificacionTareaService.queueNotification({
+        tareaId: id,
+        eventoId: evento.id,
+        eventoTipo: change.eventoTipo,
+        changes: changeContext,
+      });
     }
+
+    // Note: We do NOT call TAREA_MODIFICADA here anymore.
+    // The specific change triggers (CAMBIO_ESTADO, CAMBIO_PRIORIDAD, etc.)
+    // already handle notifications. TAREA_MODIFICADA was causing duplicate emails
+    // when both a specific change workflow AND TAREA_MODIFICADA workflow matched.
 
     return this.obtener(id);
   }
@@ -528,7 +568,7 @@ export class TareasService {
       },
     });
 
-    await this.prisma.tareaEvento.create({
+    const eventoCierre = await this.prisma.tareaEvento.create({
       data: {
         tareaId: id,
         tipo: EventoTipo.CAMBIO_ESTADO,
@@ -539,6 +579,13 @@ export class TareasService {
         visibleParaCliente: true,
         payload: { action: "cerrar" },
       },
+    });
+
+    // Queue notification for task closure (TAREA_CERRADA trigger)
+    await this.notificacionTareaService.queueNotificationByTrigger({
+      tareaId: id,
+      eventoId: eventoCierre.id,
+      trigger: "TAREA_CERRADA",
     });
 
     return this.obtener(id);
