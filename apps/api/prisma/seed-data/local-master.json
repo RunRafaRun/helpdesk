@@ -1,0 +1,468 @@
+{
+  "tipoTarea": [
+    {
+      "codigo": "Sin Clasificar",
+      "descripcion": "Sin Clasificar",
+      "orden": 0,
+      "porDefecto": true
+    },
+    {
+      "codigo": "Incidencia",
+      "descripcion": "Incidencia",
+      "orden": 1,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Error Técnico",
+      "descripcion": "Error Técnico",
+      "orden": 2,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Asistencia Técnica",
+      "descripcion": "Asistencia Técnica",
+      "orden": 3,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Soporte",
+      "descripcion": "Soporte",
+      "orden": 4,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Petición",
+      "descripcion": "Petición",
+      "orden": 5,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Implantación",
+      "descripcion": "Implantación",
+      "orden": 6,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Interna Antfor",
+      "descripcion": "Interna Antfor",
+      "orden": 7,
+      "porDefecto": false
+    }
+  ],
+  "estadoTarea": [
+    {
+      "codigo": "Pendiente",
+      "descripcion": "Pendiente",
+      "orden": 0,
+      "porDefecto": true
+    },
+    {
+      "codigo": "Aceptada",
+      "descripcion": "Aceptada",
+      "orden": 1,
+      "porDefecto": false
+    },
+    {
+      "codigo": "En Progreso",
+      "descripcion": "En Progreso",
+      "orden": 2,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Cerrada",
+      "descripcion": "Cerrada",
+      "orden": 3,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Rechazada",
+      "descripcion": "Rechazada",
+      "orden": 4,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Duplicada",
+      "descripcion": "Duplicada",
+      "orden": 5,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Interna",
+      "descripcion": "Interna",
+      "orden": 6,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Solucionada",
+      "descripcion": "Solucionada",
+      "orden": 7,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Reabierta",
+      "descripcion": "Reabierta",
+      "orden": 8,
+      "porDefecto": false
+    }
+  ],
+  "prioridadTarea": [
+    {
+      "codigo": "Muy Baja",
+      "descripcion": "Muy Baja",
+      "orden": 1,
+      "porDefecto": false,
+      "color": "#AED6F1"
+    },
+    {
+      "codigo": "Baja",
+      "descripcion": "Baja",
+      "orden": 2,
+      "porDefecto": false,
+      "color": "#45B7D1"
+    },
+    {
+      "codigo": "Normal",
+      "descripcion": "Normal",
+      "orden": 3,
+      "porDefecto": true,
+      "color": "#96CEB4"
+    },
+    {
+      "codigo": "Alta",
+      "descripcion": "Alta",
+      "orden": 4,
+      "porDefecto": false,
+      "color": "#F8C471"
+    },
+    {
+      "codigo": "Muy Alta",
+      "descripcion": "Muy Alta",
+      "orden": 5,
+      "porDefecto": false,
+      "color": "#FF6B6B"
+    }
+  ],
+  "modulo": [
+    { "codigo": "APP-BAR", "descripcion": "APP-BAR" },
+    { "codigo": "APP-COM", "descripcion": "APP-COM" },
+    { "codigo": "APP-GOB", "descripcion": "APP-GOB" },
+    { "codigo": "APP-GX", "descripcion": "APP-GX" },
+    { "codigo": "APP-SST", "descripcion": "APP-SST" },
+    { "codigo": "AV-AMA LLAVES", "descripcion": "AV-AMA LLAVES" },
+    { "codigo": "AV-ANÁLISIS & REPORTING", "descripcion": "AV-ANÁLISIS & REPORTING" },
+    { "codigo": "AV-CENTROS WELLNESS", "descripcion": "AV-CENTROS WELLNESS" },
+    { "codigo": "AVCLOUD-AMA LLAVES", "descripcion": "AVCLOUD-AMA LLAVES" },
+    { "codigo": "AVCLOUD-COMPRAS & ALMACENES", "descripcion": "AVCLOUD-COMPRAS & ALMACENES" },
+    { "codigo": "AVCLOUD-CONFIGURACIÓN GENERAL", "descripcion": "AVCLOUD-CONFIGURACIÓN GENERAL" },
+    { "codigo": "AVCLOUD-DASHBOARD", "descripcion": "AVCLOUD-DASHBOARD" },
+    { "codigo": "AVCLOUD-GUEST EXPERIENCE", "descripcion": "AVCLOUD-GUEST EXPERIENCE" },
+    { "codigo": "AVCLOUD-INTEGRATIONS", "descripcion": "AVCLOUD-INTEGRATIONS" },
+    { "codigo": "AVCLOUD-MICE", "descripcion": "AVCLOUD-MICE" },
+    { "codigo": "AVCLOUD-MÓDULO GESTIÓN", "descripcion": "AVCLOUD-MÓDULO GESTIÓN" },
+    { "codigo": "AVCLOUD-PETICIONES & INCIDENCIAS", "descripcion": "AVCLOUD-PETICIONES & INCIDENCIAS" },
+    { "codigo": "AVCLOUD-RECEPCIÓN & RESERVAS", "descripcion": "AVCLOUD-RECEPCIÓN & RESERVAS" },
+    { "codigo": "AVCLOUD-RESTAURANTES & TIENDAS", "descripcion": "AVCLOUD-RESTAURANTES & TIENDAS" },
+    { "codigo": "AVCLOUD-STAFF", "descripcion": "AVCLOUD-STAFF" },
+    { "codigo": "AV-COMPRAS & ALMACENES", "descripcion": "AV-COMPRAS & ALMACENES" },
+    { "codigo": "AV-CONFIGURACIÓN GENERAL", "descripcion": "AV-CONFIGURACIÓN GENERAL" },
+    { "codigo": "AV-CONTRATACIÓN & VENTAS", "descripcion": "AV-CONTRATACIÓN & VENTAS" },
+    { "codigo": "AV-CRM OPERATIVO", "descripcion": "AV-CRM OPERATIVO" },
+    { "codigo": "AV-FACTURACIÓN & FINANZAS", "descripcion": "AV-FACTURACIÓN & FINANZAS" },
+    { "codigo": "AV-GESTIÓN GOLF", "descripcion": "AV-GESTIÓN GOLF" },
+    { "codigo": "AV-INTEGRATIONS", "descripcion": "AV-INTEGRATIONS" },
+    { "codigo": "AV-PERSONAL", "descripcion": "AV-PERSONAL" },
+    { "codigo": "AV-PETICIONES & INCIDENCIAS", "descripcion": "AV-PETICIONES & INCIDENCIAS" },
+    { "codigo": "AV-PRESUPUESTOS", "descripcion": "AV-PRESUPUESTOS" },
+    { "codigo": "AV-RECEPCIÓN & RESERVAS", "descripcion": "AV-RECEPCIÓN & RESERVAS" },
+    { "codigo": "AV-RESTAURANTES & TIENDAS", "descripcion": "AV-RESTAURANTES & TIENDAS" }
+  ],
+  "estadoPeticion": [],
+  "agentes": [
+    {
+      "usuario": "jaldazabal",
+      "nombre": "Javier Aldazabal",
+      "email": "jaldazabal@antfor.com",
+      "role": "AGENTE",
+      "activo": true,
+      "password": "changeme123!"
+    },
+    {
+      "usuario": "niglesias",
+      "nombre": "Nerea Iglesias",
+      "email": "niglesias@antfor.com",
+      "role": "AGENTE",
+      "activo": true,
+      "password": "changeme123!"
+    },
+    {
+      "usuario": "rfernandez",
+      "nombre": "Raul Fernández",
+      "email": "rfernandez@antfor.com",
+      "role": "ADMIN",
+      "activo": true,
+      "password": "changeme123!"
+    }
+  ],
+  "clientes": [
+    {
+      "codigo": "DEMO",
+      "descripcion": "Cliente Demo",
+      "jefeProyecto1": "rfernandez",
+      "jefeProyecto2": "jaldazabal",
+      "licenciaTipo": "PPU",
+      "activo": true,
+      "unidades": [
+        { "codigo": "DEMO-H1", "descripcion": "Hotel Demo 1", "scope": "HOTEL" },
+        { "codigo": "DEMO-H2", "descripcion": "Hotel Demo 2", "scope": "HOTEL" },
+        { "codigo": "CENTRAL", "descripcion": "Central DEMO", "scope": "CENTRAL" }
+      ],
+      "contactos": [
+        {
+          "nombre": "Usuario Demo",
+          "email": "demo@demo.com",
+          "movil": "+34 600 000 000",
+          "cargo": "IT Manager",
+          "principal": true,
+          "activo": true
+        }
+      ]
+    },
+    {
+      "codigo": "ACCOR",
+      "descripcion": "Accor Hotels",
+      "activo": true
+    },
+    {
+      "codigo": "BARCELO",
+      "descripcion": "Barceló Hotel Group",
+      "activo": true
+    },
+    {
+      "codigo": "EUROSTARS",
+      "descripcion": "Eurostars Hotel Company",
+      "activo": true
+    },
+    {
+      "codigo": "HILTON",
+      "descripcion": "Hilton Hotels & Resorts",
+      "activo": true
+    },
+    {
+      "codigo": "IBEROSTAR",
+      "descripcion": "Iberostar Hotels & Resorts",
+      "activo": true
+    },
+    {
+      "codigo": "MARRIOTT",
+      "descripcion": "Marriott International",
+      "activo": true
+    },
+    {
+      "codigo": "MELIA",
+      "descripcion": "Meliá Hotels International",
+      "activo": true
+    },
+    {
+      "codigo": "NH",
+      "descripcion": "NH Hotel Group",
+      "activo": true
+    },
+    {
+      "codigo": "PARADORES",
+      "descripcion": "Paradores de España",
+      "activo": true
+    },
+    {
+      "codigo": "RIU",
+      "descripcion": "RIU Hotels & Resorts",
+      "activo": true
+    }
+  ],
+  "releases": [
+    {
+      "codigo": "R35",
+      "descripcion": "Release 35 - Producción",
+      "rama": "PRODUCCION",
+      "hotfixes": [
+        {
+          "codigo": "HF01",
+          "descripcion": "Hotfix 01",
+          "rama": "PRODUCCION"
+        },
+        {
+          "codigo": "HF02",
+          "descripcion": "Hotfix 02",
+          "rama": "PRODUCCION"
+        }
+      ]
+    },
+    {
+      "codigo": "R36",
+      "descripcion": "Release 36 - Desarrollo",
+      "rama": "DESARROLLO",
+      "hotfixes": []
+    }
+  ],
+  "plantillas": [
+    {
+      "codigo": "PROXIMA_ACTUALIZACION",
+      "descripcion": "Próxima Actualización",
+      "texto": "Este tema está planificado para la próxima actualización del sistema. Te mantendremos informado del progreso.",
+      "categoria": "respuesta",
+      "orden": 1,
+      "activo": true
+    },
+    {
+      "codigo": "SOLUCION_TAREA",
+      "descripcion": "Solución Tarea",
+      "texto": "Se ha implementado la solución para este ticket. Por favor, verifica que todo funciona correctamente y confirma la resolución.",
+      "categoria": "respuesta",
+      "orden": 2,
+      "activo": true
+    },
+    {
+      "codigo": "TRABAJANDO_TAREA",
+      "descripcion": "Trabajando en tarea",
+      "texto": "Actualmente estamos trabajando en tu solicitud. Te contactaremos pronto con novedades.",
+      "categoria": "respuesta",
+      "orden": 3,
+      "activo": true
+    },
+    {
+      "codigo": "TAREA_CLASIFICADA_ACEPTADA",
+      "descripcion": "Tarea Clasificada y Aceptada",
+      "texto": "Tu tarea ha sido clasificada y aceptada. Nuestro equipo comenzará a trabajar en ella según la prioridad asignada.",
+      "categoria": "respuesta",
+      "orden": 4,
+      "activo": true
+    }
+  ],
+  "workflows": [
+    {
+      "nombre": "Pendiente a Aceptada",
+      "descripcion": "Notificar al cliente cuando una tarea pasa a Aceptada",
+      "trigger": "CAMBIO_ESTADO",
+      "activo": true,
+      "orden": 1,
+      "stopOnMatch": false,
+      "plantillaCodigo": "TAREA_CLASIFICADA_ACEPTADA",
+      "asuntoCustom": "[Ticket #{{tarea.numero}}] Tu tarea ha sido aceptada",
+      "ccJefeProyecto1": true,
+      "ccJefeProyecto2": false,
+      "conditions": [
+        {
+          "field": "ESTADO_CODIGO",
+          "operator": "EQUALS",
+          "value": "Aceptada",
+          "orGroup": 0
+        }
+      ],
+      "recipients": [
+        {
+          "recipientType": "USUARIO_CLIENTE_CREADOR",
+          "value": "",
+          "isCc": false
+        }
+      ],
+      "actions": []
+    },
+    {
+      "nombre": "Notificar Solucionada",
+      "descripcion": "Notificar al cliente cuando una tarea se marca como Solucionada",
+      "trigger": "CAMBIO_ESTADO",
+      "activo": true,
+      "orden": 2,
+      "stopOnMatch": false,
+      "plantillaCodigo": "SOLUCION_TAREA",
+      "asuntoCustom": "[Ticket #{{tarea.numero}}] Tu tarea ha sido solucionada",
+      "ccJefeProyecto1": true,
+      "ccJefeProyecto2": false,
+      "conditions": [
+        {
+          "field": "ESTADO_CODIGO",
+          "operator": "EQUALS",
+          "value": "Solucionada",
+          "orGroup": 0
+        }
+      ],
+      "recipients": [
+        {
+          "recipientType": "USUARIO_CLIENTE_CREADOR",
+          "value": "",
+          "isCc": false
+        }
+      ],
+      "actions": []
+    },
+    {
+      "nombre": "Notificar En Progreso",
+      "descripcion": "Notificar al cliente cuando una tarea pasa a En Progreso",
+      "trigger": "CAMBIO_ESTADO",
+      "activo": true,
+      "orden": 3,
+      "stopOnMatch": false,
+      "plantillaCodigo": "TRABAJANDO_TAREA",
+      "asuntoCustom": "[Ticket #{{tarea.numero}}] Estamos trabajando en tu tarea",
+      "ccJefeProyecto1": false,
+      "ccJefeProyecto2": false,
+      "conditions": [
+        {
+          "field": "ESTADO_CODIGO",
+          "operator": "EQUALS",
+          "value": "En Progreso",
+          "orGroup": 0
+        }
+      ],
+      "recipients": [
+        {
+          "recipientType": "USUARIO_CLIENTE_CREADOR",
+          "value": "",
+          "isCc": false
+        }
+      ],
+      "actions": []
+    },
+    {
+      "nombre": "Respuesta Agente",
+      "descripcion": "Notificar al cliente cuando un agente responde",
+      "trigger": "RESPUESTA_AGENTE",
+      "activo": true,
+      "orden": 4,
+      "stopOnMatch": false,
+      "plantillaCodigo": null,
+      "asuntoCustom": "[Ticket #{{tarea.numero}}] Nueva respuesta de soporte",
+      "ccJefeProyecto1": false,
+      "ccJefeProyecto2": false,
+      "conditions": [],
+      "recipients": [
+        {
+          "recipientType": "USUARIO_CLIENTE_CREADOR",
+          "value": "",
+          "isCc": false
+        }
+      ],
+      "actions": []
+    },
+    {
+      "nombre": "Mensaje Cliente",
+      "descripcion": "Notificar al agente asignado cuando el cliente envía un mensaje",
+      "trigger": "MENSAJE_CLIENTE",
+      "activo": true,
+      "orden": 5,
+      "stopOnMatch": false,
+      "plantillaCodigo": null,
+      "asuntoCustom": "[Ticket #{{tarea.numero}}] Nuevo mensaje del cliente",
+      "ccJefeProyecto1": false,
+      "ccJefeProyecto2": false,
+      "conditions": [],
+      "recipients": [
+        {
+          "recipientType": "AGENTE_ASIGNADO",
+          "value": "",
+          "isCc": false
+        }
+      ],
+      "actions": []
+    }
+  ]
+}
