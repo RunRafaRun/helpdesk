@@ -273,24 +273,33 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
     );
   };
 
+  // Strip HTML tags from text
+  const stripHtml = (text: string) => {
+    if (!text) return "";
+    return text.replace(/<[^>]*>/g, "");
+  };
+
   // Truncate text with ellipsis around match
   const truncateAroundMatch = (text: string, query: string, maxLength = 100) => {
     if (!text) return "";
     
-    const lowerText = text.toLowerCase();
+    // Strip HTML tags first
+    const cleanText = stripHtml(text);
+    
+    const lowerText = cleanText.toLowerCase();
     const lowerQuery = query.toLowerCase();
     const matchIndex = lowerText.indexOf(lowerQuery);
     
-    if (matchIndex === -1 || text.length <= maxLength) {
-      return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+    if (matchIndex === -1 || cleanText.length <= maxLength) {
+      return cleanText.length > maxLength ? cleanText.substring(0, maxLength) + "..." : cleanText;
     }
     
     const start = Math.max(0, matchIndex - 30);
-    const end = Math.min(text.length, matchIndex + query.length + 70);
+    const end = Math.min(cleanText.length, matchIndex + query.length + 70);
     
-    let result = text.substring(start, end);
+    let result = cleanText.substring(start, end);
     if (start > 0) result = "..." + result;
-    if (end < text.length) result = result + "...";
+    if (end < cleanText.length) result = result + "...";
     
     return result;
   };
@@ -326,14 +335,16 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
             ) : (
               <>
                 <div className="search-results-header">
-                  <span>{textResults.total} resultado{textResults.total !== 1 ? "s" : ""}</span>
-                  <button
-                    onClick={handleOpenSearchPage}
-                    className="search-expand-btn"
-                    title="Abrir pagina de resultados"
-                  >
-                    <LuExternalLink size={14} />
-                  </button>
+                  <span>
+                    {textResults.total} resultado{textResults.total !== 1 ? "s" : ""}
+                    <button
+                      onClick={handleOpenSearchPage}
+                      className="search-expand-btn"
+                      title="Abrir pagina de resultados"
+                    >
+                      <LuExternalLink size={12} />
+                    </button>
+                  </span>
                 </div>
                 <div className="search-results-list">
                   {textResults.items.map((result) => (

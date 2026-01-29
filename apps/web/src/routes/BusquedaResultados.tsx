@@ -59,24 +59,33 @@ export default function BusquedaResultados() {
     );
   };
 
+  // Strip HTML tags from text
+  const stripHtml = (text: string) => {
+    if (!text) return "";
+    return text.replace(/<[^>]*>/g, "");
+  };
+
   // Truncate text with ellipsis around match, but show more text
   const truncateAroundMatch = (text: string, maxLength = 200) => {
     if (!text) return "";
     
-    const lowerText = text.toLowerCase();
+    // Strip HTML tags first
+    const cleanText = stripHtml(text);
+    
+    const lowerText = cleanText.toLowerCase();
     const lowerQuery = query.toLowerCase();
     const matchIndex = lowerText.indexOf(lowerQuery);
     
-    if (matchIndex === -1 || text.length <= maxLength) {
-      return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+    if (matchIndex === -1 || cleanText.length <= maxLength) {
+      return cleanText.length > maxLength ? cleanText.substring(0, maxLength) + "..." : cleanText;
     }
     
     const start = Math.max(0, matchIndex - 60);
-    const end = Math.min(text.length, matchIndex + query.length + 140);
+    const end = Math.min(cleanText.length, matchIndex + query.length + 140);
     
-    let result = text.substring(start, end);
+    let result = cleanText.substring(start, end);
     if (start > 0) result = "..." + result;
-    if (end < text.length) result = result + "...";
+    if (end < cleanText.length) result = result + "...";
     
     return result;
   };

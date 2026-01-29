@@ -316,10 +316,12 @@ function ReleaseStatusPanel({ releaseStatus }: { releaseStatus: DashboardStats["
 
 function PrioridadPendientesWidget({ 
   data, 
-  prioridades 
+  prioridades,
+  onRowClick 
 }: { 
   data: DashboardStats["byPrioridadPendientes"];
   prioridades: PrioridadTarea[];
+  onRowClick?: (prioridadCodigo: string) => void;
 }) {
   // Create color map from prioridades
   const colorMap: Record<string, string> = {};
@@ -332,7 +334,25 @@ function PrioridadPendientesWidget({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {data.map((item) => (
-        <div key={item.prioridad.codigo} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div 
+          key={item.prioridad.codigo} 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: 6,
+            cursor: onRowClick ? "pointer" : "default",
+            padding: "2px 0",
+            borderRadius: 3,
+            transition: "background 0.15s ease",
+          }}
+          onClick={() => onRowClick?.(item.prioridad.codigo)}
+          onMouseEnter={(e) => {
+            if (onRowClick) e.currentTarget.style.background = "rgba(0,0,0,0.03)";
+          }}
+          onMouseLeave={(e) => {
+            if (onRowClick) e.currentTarget.style.background = "transparent";
+          }}
+        >
           <div style={{ 
             width: 55, 
             fontSize: 11, 
@@ -546,8 +566,14 @@ export default function Dashboard() {
             border: "1px solid var(--border)",
             minWidth: 220,
           }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Tareas por Prioridad Pendientes</div>
-            <PrioridadPendientesWidget data={stats.byPrioridadPendientes} prioridades={prioridades} />
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Tareas Pendientes / Prioridad</div>
+            <PrioridadPendientesWidget 
+              data={stats.byPrioridadPendientes} 
+              prioridades={prioridades} 
+              onRowClick={(prioridadCodigo) => {
+                navigate(`/tareas?prioridad=${encodeURIComponent(prioridadCodigo)}&estado=Pendiente`);
+              }}
+            />
           </div>
         );
 

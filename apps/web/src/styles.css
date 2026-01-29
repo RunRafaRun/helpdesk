@@ -614,22 +614,23 @@ body{ background: var(--bg); color: var(--text); }
 /* Search expand button */
 .search-results-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
 .search-expand-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
+  margin-left: 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   color: var(--muted);
   transition: all 0.15s ease;
+  vertical-align: middle;
 }
 
 .search-expand-btn:hover {
