@@ -176,7 +176,80 @@
     { "codigo": "AV-RECEPCIÓN & RESERVAS", "descripcion": "AV-RECEPCIÓN & RESERVAS" },
     { "codigo": "AV-RESTAURANTES & TIENDAS", "descripcion": "AV-RESTAURANTES & TIENDAS" }
   ],
-  "estadoPeticion": [],
+  "estadoPeticion": [
+    {
+      "codigo": "Cliente-Pendiente",
+      "descripcion": "Pendiente de aprobacion por cliente",
+      "orden": 1,
+      "porDefecto": true
+    },
+    {
+      "codigo": "Cliente-Aceptada",
+      "descripcion": "Aceptada por cliente",
+      "orden": 2,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Cliente-Autorizada",
+      "descripcion": "Autorizada por cliente",
+      "orden": 3,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Cliente-Rechazada",
+      "descripcion": "Rechazada por cliente",
+      "orden": 4,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Cliente-Retenida",
+      "descripcion": "Retenida por cliente",
+      "orden": 5,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Dev-Valorada",
+      "descripcion": "Valorada por desarrollo",
+      "orden": 10,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Dev-Desarrollo",
+      "descripcion": "En desarrollo",
+      "orden": 11,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Dev-Documentacion",
+      "descripcion": "En documentacion",
+      "orden": 12,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Dev-Rechazada",
+      "descripcion": "Rechazada por desarrollo",
+      "orden": 13,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Sop-Pendiente",
+      "descripcion": "Pendiente soporte",
+      "orden": 20,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Sop-NoAutorizada",
+      "descripcion": "No autorizada soporte",
+      "orden": 21,
+      "porDefecto": false
+    },
+    {
+      "codigo": "Sop-Terminada",
+      "descripcion": "Terminada soporte",
+      "orden": 22,
+      "porDefecto": false
+    }
+  ],
   "agentes": [
     {
       "usuario": "jaldazabal",

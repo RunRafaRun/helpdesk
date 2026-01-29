@@ -560,9 +560,19 @@ export type TipoTarea = {
   orden: number;
   porDefecto: boolean;
   activo?: boolean;
+  tablaRelacionada?: string;  // e.g., "EstadoPeticion" - indicates which secondary status table to use
 };
 
 export type EstadoTarea = {
+  id: string;
+  codigo: string;
+  descripcion?: string;
+  orden: number;
+  porDefecto: boolean;
+  activo?: boolean;
+};
+
+export type EstadoPeticion = {
   id: string;
   codigo: string;
   descripcion?: string;
@@ -610,6 +620,8 @@ export type Tarea = {
   tipo: TipoTarea;
   estadoId?: string;
   estado?: EstadoTarea;
+  estadoPeticionId?: string;
+  estadoPeticion?: EstadoPeticion;
   prioridadId: string;
   prioridad: PrioridadTarea;
   moduloId?: string;
@@ -789,11 +801,11 @@ export async function listTiposTarea(opts?: { includeInactive?: boolean }) {
   return request<TipoTarea[]>(`/admin/lookup/tipos-tarea${qs}`);
 }
 
-export async function createTipoTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }) {
+export async function createTipoTarea(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean; tablaRelacionada?: string }) {
   return request<TipoTarea>("/admin/lookup/tipos-tarea", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function updateTipoTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }, replacementId?: string) {
+export async function updateTipoTarea(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean; tablaRelacionada?: string }, replacementId?: string) {
   const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
   return request<TipoTarea>(`/admin/lookup/tipos-tarea/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
 }
@@ -841,6 +853,26 @@ export async function updatePrioridadTarea(id: string, input: { codigo?: string;
 export async function deletePrioridadTarea(id: string, replacementId?: string) {
   const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
   return request<void>(`/admin/lookup/prioridades-tarea/${id}${qs}`, { method: "DELETE" });
+}
+
+// Lookup endpoints - EstadoPeticion CRUD
+export async function listEstadosPeticion(opts?: { includeInactive?: boolean }) {
+  const qs = opts?.includeInactive ? "?includeInactive=1" : "";
+  return request<EstadoPeticion[]>(`/admin/lookup/estados-peticion${qs}`);
+}
+
+export async function createEstadoPeticion(input: { codigo: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }) {
+  return request<EstadoPeticion>("/admin/lookup/estados-peticion", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function updateEstadoPeticion(id: string, input: { codigo?: string; descripcion?: string; orden?: number; porDefecto?: boolean; activo?: boolean }, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<EstadoPeticion>(`/admin/lookup/estados-peticion/${id}${qs}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export async function deleteEstadoPeticion(id: string, replacementId?: string) {
+  const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
+  return request<void>(`/admin/lookup/estados-peticion/${id}${qs}`, { method: "DELETE" });
 }
 
 // ==================== LOOKUP ENDPOINTS (no permissions required) ====================
@@ -1532,4 +1564,91 @@ export async function listEstadosPermitidos(
  */
 export async function getEstadoInicial(tipoTareaId: string) {
   return request<EstadoTarea>(`/admin/lookup/estado-inicial/${tipoTareaId}`);
+}
+
+// ==================== ESTADO PETICION FLOWS (Secondary Status Machine) ====================
+
+export type EstadoPeticionFlowListItem = {
+  id: string;
+  tipoTareaId: string;
+  tipoTarea: { id: string; codigo: string; descripcion: string | null };
+  estadoInicial: { id: string; codigo: string } | null;
+  estadosCount: number;
+  transicionesCount: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EstadoPeticionFlowDetail = {
+  id: string;
+  tipoTareaId: string;
+  tipoTarea: { id: string; codigo: string; descripcion: string | null };
+  estadoInicialId: string | null;
+  estadoInicial: { id: string; codigo: string; descripcion: string | null } | null;
+  estadosPermitidos: {
+    id: string;
+    estadoId: string;
+    estado: { id: string; codigo: string; descripcion: string | null };
+    orden: number;
+    visibleCliente: boolean;
+  }[];
+  transiciones: {
+    id: string;
+    estadoOrigenId: string;
+    estadoOrigen: { id: string; codigo: string };
+    estadoDestinoId: string;
+    estadoDestino: { id: string; codigo: string };
+    permiteAgente: boolean;
+    permiteCliente: boolean;
+    notificar: boolean;
+    orden: number;
+  }[];
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateEstadoPeticionFlowInput = {
+  tipoTareaId: string;
+  estadoInicialId?: string;
+  estadosPermitidos: EstadoPermitido[];
+  transiciones: Transicion[];
+  activo?: boolean;
+};
+
+export type UpdateEstadoPeticionFlowInput = Partial<Omit<CreateEstadoPeticionFlowInput, "tipoTareaId">>;
+
+export async function listEstadoPeticionFlows() {
+  return request<EstadoPeticionFlowListItem[]>("/admin/estado-peticion-flows");
+}
+
+export async function getEstadoPeticionFlow(id: string) {
+  return request<EstadoPeticionFlowDetail>(`/admin/estado-peticion-flows/${id}`);
+}
+
+export async function getEstadoPeticionFlowByTipoTarea(tipoTareaId: string) {
+  return request<EstadoPeticionFlowDetail | null>(`/admin/estado-peticion-flows/by-tipo/${tipoTareaId}`);
+}
+
+export async function createEstadoPeticionFlow(input: CreateEstadoPeticionFlowInput) {
+  return request<EstadoPeticionFlowDetail>("/admin/estado-peticion-flows", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateEstadoPeticionFlow(id: string, input: UpdateEstadoPeticionFlowInput) {
+  return request<EstadoPeticionFlowDetail>(`/admin/estado-peticion-flows/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteEstadoPeticionFlow(tipoTareaId: string) {
+  return request<{ success: boolean }>(`/admin/estado-peticion-flows/${tipoTareaId}`, { method: "DELETE" });
+}
+
+export async function toggleEstadoPeticionFlow(id: string) {
+  return request<{ activo: boolean }>(`/admin/estado-peticion-flows/${id}/toggle`, { method: "POST" });
 }

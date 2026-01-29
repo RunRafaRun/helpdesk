@@ -8,7 +8,7 @@ type MasterData = {
   estadoTarea?: Array<{ codigo: string; descripcion?: string | null; orden?: number; porDefecto?: boolean; activo?: boolean }>;
   prioridadTarea?: Array<{ codigo: string; descripcion?: string | null; orden?: number; porDefecto?: boolean; color?: string | null; activo?: boolean }>;
   modulo?: Array<{ codigo: string; descripcion?: string | null; activo?: boolean }>;
-  estadoPeticion?: Array<{ codigo: string; descripcion?: string | null }>;
+  estadoPeticion?: Array<{ codigo: string; descripcion?: string | null; orden?: number; porDefecto?: boolean; activo?: boolean }>;
   agentes?: Array<{
     usuario: string;
     nombre: string;
@@ -193,8 +193,19 @@ export async function seedMasterData(prisma: PrismaClient) {
   for (const item of estadoPeticion) {
     await prisma.estadoPeticion.upsert({
       where: { codigo: item.codigo },
-      update: { descripcion: item.descripcion ?? null },
-      create: { codigo: item.codigo, descripcion: item.descripcion ?? null },
+      update: {
+        descripcion: item.descripcion ?? null,
+        orden: item.orden ?? 0,
+        porDefecto: item.porDefecto ?? false,
+        activo: item.activo ?? true,
+      },
+      create: {
+        codigo: item.codigo,
+        descripcion: item.descripcion ?? null,
+        orden: item.orden ?? 0,
+        porDefecto: item.porDefecto ?? false,
+        activo: item.activo ?? true,
+      },
     });
   }
   if (estadoPeticion.length > 0) console.log(`[seed] Loaded ${estadoPeticion.length} EstadoPeticion`);

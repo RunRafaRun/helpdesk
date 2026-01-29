@@ -100,9 +100,12 @@ infra/
 | `/config/modulos` | Module management |
 | `/config/releases` | Release/hotfix management with data integrity checks |
 | `/config/roles` | Role and permissions management |
-| `/config/tipos-tarea` | Task types management with icons |
+| `/config/tipos-tarea` | Task types management with icons and tablaRelacionada |
 | `/config/estados-tarea` | Task states management with icons and suggestions |
 | `/config/prioridades-tarea` | Task priorities management with colors |
+| `/config/estados-peticion` | Secondary status (Estado Peticion) management |
+| `/config/estado-flows` | Estado flow configuration per task type |
+| `/config/estado-peticion-flows` | Estado Peticion flow configuration per task type |
 | `/config/plantillas` | Reusable text templates with wildcards |
 | `/config/notificaciones` | Email configuration |
 | `/config/workflows` | Notification workflows (if-then rules engine) |
@@ -162,9 +165,16 @@ Widgets available:
 | **ClienteUsuario** | Customer portal users (mapped to `usuario_cliente` table) |
 | **Tarea** | Support tickets with auto-generated numero, estado, tipo, prioridad |
 | **TareaEvento** | Timeline events (COMENTARIO, CAMBIO_ESTADO, ASIGNACION, etc.) |
-| **TipoTarea** | Task types with `orden` and `porDefecto` fields |
+| **TipoTarea** | Task types with `orden`, `porDefecto`, and `tablaRelacionada` fields |
 | **EstadoTarea** | Task states with `orden` and `porDefecto` fields |
 | **PrioridadTarea** | Task priorities with `orden` and `porDefecto` fields |
+| **EstadoPeticion** | Secondary status for development workflow (e.g., Cliente-Aceptada, Dev-Desarrollo) |
+| **TipoTareaEstadoFlow** | Estado flow configuration per task type |
+| **TipoTareaEstado** | Allowed estados per flow |
+| **TipoTareaTransicion** | Allowed transitions between estados |
+| **TipoTareaEstadoPeticionFlow** | Estado Peticion flow configuration per task type |
+| **TipoTareaEstadoPeticion** | Allowed estados peticion per flow |
+| **TipoTareaTransicionPeticion** | Allowed transitions between estados peticion |
 | **RoleEntity/Permission** | RBAC system with PermisoCodigo enum |
 | **ClienteSoftware** | Client software inventory (PMS, ERP, etc.) |
 | **ClienteContacto** | Client contacts with principal flag |
@@ -183,14 +193,59 @@ Widgets available:
 | **NotificacionTarea** | Notification queue for task-related emails |
 | **NotificacionConfigEvento** | Legacy event-based notification configuration |
 
-### Lookup Tables (TipoTarea, EstadoTarea, PrioridadTarea)
+### Lookup Tables (TipoTarea, EstadoTarea, PrioridadTarea, EstadoPeticion)
 
 These lookup tables have the following fields:
 - `codigo` (String, unique) - Code identifier
 - `descripcion` (String, optional) - Description
 - `orden` (Int, default 0) - Sort order for dropdowns
 - `porDefecto` (Boolean, default false) - Default value for new tasks (only one can be true)
+- `activo` (Boolean, default true) - Active/inactive status
 - `color` (String, optional) - Hex color code for priority levels - PrioridadTarea only
+
+**TipoTarea** has an additional field:
+- `tablaRelacionada` (String, optional) - Links to a secondary status table (e.g., "EstadoPeticion")
+
+**EstadoPeticion** is a secondary status system for tracking development workflow states:
+- Client states: Cliente-Pendiente, Cliente-Aceptada, Cliente-Autorizada, Cliente-Rechazada, Cliente-Retenida
+- Development states: Dev-Valorada, Dev-Desarrollo, Dev-Documentacion, Dev-Rechazada
+- Support states: Sop-Pendiente, Sop-NoAutorizada, Sop-Terminada
+
+#### State Flow Management
+
+The application supports configurable state machine workflows for both EstadoTarea and EstadoPeticion:
+
+**Estado Flows** (`/config/estado-flows`):
+- Configure which EstadoTarea values are allowed for each TipoTarea
+- Define allowed transitions between estados
+- Set permissions per transition (agent/client can make this transition)
+- Set initial estado override per TipoTarea
+- Toggle notification on transition
+- Active/inactive flow toggle
+
+**Estado Peticion Flows** (`/config/estado-peticion-flows`):
+- Same functionality as Estado Flows, but for EstadoPeticion
+- Only shows TipoTarea that have `tablaRelacionada = "EstadoPeticion"`
+- Configure which EstadoPeticion values are allowed
+- Define allowed transitions with permissions
+
+**Flow Models**:
+| Model | Description |
+|-------|-------------|
+| TipoTareaEstadoFlow | Main flow definition linking TipoTarea to allowed estados |
+| TipoTareaEstado | Junction table: which EstadoTarea values are allowed in a flow |
+| TipoTareaTransicion | Allowed transitions with permissions (permiteAgente, permiteCliente, notificar) |
+| TipoTareaEstadoPeticionFlow | Same as above but for EstadoPeticion |
+| TipoTareaEstadoPeticion | Allowed EstadoPeticion values per flow |
+| TipoTareaTransicionPeticion | Allowed transitions between EstadoPeticion values |
+
+**Backend Endpoints**:
+- `GET/POST/PUT/DELETE /admin/estado-flows` - Estado flow CRUD
+- `GET /admin/estado-flows/by-tipo/:tipoTareaId` - Get flow by TipoTarea
+- `POST /admin/estado-flows/:id/toggle` - Toggle flow active status
+- `GET/POST/PUT/DELETE /admin/estado-peticion-flows` - Estado Peticion flow CRUD
+- `GET /admin/estado-peticion-flows/by-tipo/:tipoTareaId` - Get flow by TipoTarea
+- `POST /admin/estado-peticion-flows/:id/toggle` - Toggle flow active status
 
 #### Data Integrity Checks
 

@@ -1,14 +1,14 @@
 import React from "react";
 import {
-  TipoTarea,
-  listTiposTarea,
-  createTipoTarea,
-  updateTipoTarea,
-  deleteTipoTarea,
+  EstadoPeticion,
+  listEstadosPeticion,
+  createEstadoPeticion,
+  updateEstadoPeticion,
+  deleteEstadoPeticion,
 } from "../../lib/api";
 
-export default function TiposTarea() {
-  const [items, setItems] = React.useState<TipoTarea[]>([]);
+export default function EstadosPeticion() {
+  const [items, setItems] = React.useState<EstadoPeticion[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -17,7 +17,6 @@ export default function TiposTarea() {
   const [orden, setOrden] = React.useState(0);
   const [porDefecto, setPorDefecto] = React.useState(false);
   const [activo, setActivo] = React.useState(true);
-  const [tablaRelacionada, setTablaRelacionada] = React.useState("");
   const [replacementId, setReplacementId] = React.useState("");
   const [showInactive, setShowInactive] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -26,10 +25,10 @@ export default function TiposTarea() {
   async function loadData() {
     setLoading(true);
     try {
-      const data = await listTiposTarea({ includeInactive: showInactive });
+      const data = await listEstadosPeticion({ includeInactive: showInactive });
       setItems(data);
     } catch (e: any) {
-      console.error("Error loading tipos tarea:", e);
+      console.error("Error loading estados peticion:", e);
     } finally {
       setLoading(false);
     }
@@ -46,21 +45,19 @@ export default function TiposTarea() {
     setOrden(0);
     setPorDefecto(false);
     setActivo(true);
-    setTablaRelacionada("");
     setReplacementId("");
     setEditingId(null);
     setShowForm(keepOpen);
     setError(null);
   }
 
-  function startEdit(item: TipoTarea) {
+  function startEdit(item: EstadoPeticion) {
     setEditingId(item.id);
     setCodigo(item.codigo);
     setDescripcion(item.descripcion || "");
     setOrden(item.orden);
     setPorDefecto(item.porDefecto);
     setActivo(item.activo !== false);
-    setTablaRelacionada(item.tablaRelacionada || "");
     setReplacementId("");
     setShowForm(true);
     setError(null);
@@ -80,22 +77,20 @@ export default function TiposTarea() {
           setError("Debe seleccionar un reemplazo para desactivar.");
           return;
         }
-        await updateTipoTarea(editingId, {
+        await updateEstadoPeticion(editingId, {
           codigo: codigo.trim(),
           descripcion: descripcion.trim() || undefined,
           orden,
           porDefecto,
           activo,
-          tablaRelacionada: tablaRelacionada.trim() || undefined,
         }, replacementId || undefined);
       } else {
-        await createTipoTarea({
+        await createEstadoPeticion({
           codigo: codigo.trim(),
           descripcion: descripcion.trim() || undefined,
           orden,
           porDefecto,
           activo,
-          tablaRelacionada: tablaRelacionada.trim() || undefined,
         });
       }
       resetForm(editingId ? undefined : { keepOpen: true });
@@ -107,10 +102,10 @@ export default function TiposTarea() {
     }
   }
 
-  async function handleDelete(item: TipoTarea) {
+  async function handleDelete(item: EstadoPeticion) {
     if (!confirm("¿Esta seguro de eliminar este registro?")) return;
     try {
-      await deleteTipoTarea(item.id, replacementId || undefined);
+      await deleteEstadoPeticion(item.id, replacementId || undefined);
       await loadData();
       setReplacementId("");
       setEditingId(null);
@@ -128,7 +123,7 @@ export default function TiposTarea() {
   return (
     <div className="grid">
       <div className="topbar">
-        <div className="h1">Tipos de Tarea</div>
+        <div className="h1">Estados de Peticion</div>
         <button className="btn icon" onClick={loadData} disabled={loading} title="Refrescar">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
@@ -157,6 +152,11 @@ export default function TiposTarea() {
           </div>
         </div>
 
+        <div style={{ marginBottom: 16, padding: 12, background: "var(--bg-tertiary)", borderRadius: 6, fontSize: 13, color: "var(--muted)" }}>
+          <strong>Nota:</strong> Estos estados se usan cuando el tipo de tarea tiene configurado <code>tablaRelacionada = "EstadoPeticion"</code>.
+          Permiten controlar el flujo de peticiones/desarrollos (ej: Cliente-Pendiente, Dev-Desarrollo, Sop-Terminada).
+        </div>
+
         {showForm && (
           <form onSubmit={handleSubmit} style={{ padding: 16, background: "var(--bg-secondary)", borderRadius: 8, marginBottom: 16 }}>
             {error && (
@@ -171,7 +171,7 @@ export default function TiposTarea() {
                   className="input"
                   value={codigo}
                   onChange={(e) => setCodigo(e.target.value)}
-                  placeholder="Ej: INCIDENCIA"
+                  placeholder="Ej: Cliente-Pendiente"
                 />
               </div>
               <div className="field">
@@ -194,23 +194,13 @@ export default function TiposTarea() {
                 />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
               <div className="field">
                 <div className="label">Estado</div>
                 <select className="input" value={activo ? "ACTIVO" : "DESACTIVADO"} onChange={(e) => setActivo(e.target.value === "ACTIVO")}> 
                   <option value="ACTIVO">Activo</option>
                   <option value="DESACTIVADO">Desactivado</option>
                 </select>
-              </div>
-              <div className="field">
-                <div className="label">Tabla Relacionada</div>
-                <select className="input" value={tablaRelacionada} onChange={(e) => setTablaRelacionada(e.target.value)}>
-                  <option value="">-- Ninguna --</option>
-                  <option value="EstadoPeticion">Estado Peticion</option>
-                </select>
-                <div className="small" style={{ marginTop: 6, color: "var(--muted)" }}>
-                  Si se configura, las tareas de este tipo mostraran un campo adicional de estado.
-                </div>
               </div>
               {editingId && (
                 <div className="field">
@@ -234,7 +224,7 @@ export default function TiposTarea() {
                   checked={porDefecto}
                   onChange={(e) => setPorDefecto(e.target.checked)}
                 />
-                <span>Por Defecto (se usara en nuevas tareas)</span>
+                <span>Por Defecto (se usara en nuevas peticiones)</span>
               </label>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -259,9 +249,8 @@ export default function TiposTarea() {
             <thead>
               <tr>
                 <th style={{ width: 80 }}>Orden</th>
-                <th style={{ width: 150 }}>Codigo</th>
+                <th style={{ width: 200 }}>Codigo</th>
                 <th>Descripcion</th>
-                <th style={{ width: 140 }}>Tabla Relacionada</th>
                 <th style={{ width: 120 }}>Estado</th>
                 <th style={{ width: 100 }}>Por Defecto</th>
                 <th style={{ width: 120 }}>Acciones</th>
@@ -273,7 +262,6 @@ export default function TiposTarea() {
                   <td>{item.orden}</td>
                   <td style={{ fontWeight: 500 }}>{item.codigo}</td>
                 <td>{item.descripcion || "-"}</td>
-                <td>{item.tablaRelacionada || "-"}</td>
                 <td>{item.activo !== false ? "Activo" : "Desactivado"}</td>
                 <td>
                   {item.porDefecto && (

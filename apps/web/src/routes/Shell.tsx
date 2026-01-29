@@ -130,7 +130,9 @@ export default function Shell() {
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/tipos-tarea" onClick={closeAllMenus}>Tipos Tarea</NavLink>}
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/estados-tarea" onClick={closeAllMenus}>Estados Tarea</NavLink>}
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/prioridades-tarea" onClick={closeAllMenus}>Prioridades Tarea</NavLink>}
+                  {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/estados-peticion" onClick={closeAllMenus}>Estados Peticion</NavLink>}
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/estado-flows" onClick={closeAllMenus}>Flujos de Estado</NavLink>}
+                  {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/estado-peticion-flows" onClick={closeAllMenus}>Flujos Estado Petición</NavLink>}
                   {hasPerm("CONFIG_MAESTROS") && <NavLink to="/config/plantillas" onClick={closeAllMenus}>Plantillas</NavLink>}
                   {hasPerm("CONFIG_NOTIFICACIONES") && <NavLink to="/config/notificaciones" onClick={closeAllMenus}>Configuración Notificaciones</NavLink>}
                   {hasPerm("CONFIG_NOTIFICACIONES") && <NavLink to="/config/workflows" onClick={closeAllMenus}>Workflows Notificaciones</NavLink>}

@@ -95,14 +95,18 @@ model ClienteUsuario {
 }
 
 model TipoTarea {
-  id          String               @id @default(uuid()) @db.Uuid
-  codigo      String               @unique @db.VarChar(50)
-  descripcion String?
-  orden       Int                  @default(0)
-  porDefecto  Boolean              @default(false)
-  activo      Boolean              @default(true)
-  tareas      Tarea[]
-  estadoFlow  TipoTareaEstadoFlow?
+  id               String               @id @default(uuid()) @db.Uuid
+  codigo           String               @unique @db.VarChar(50)
+  descripcion      String?
+  orden            Int                  @default(0)
+  porDefecto       Boolean              @default(false)
+  activo           Boolean              @default(true)
+  // Related lookup table name for secondary status (e.g., "EstadoPeticion")
+  // When set, tasks of this type will show this additional status field
+  tablaRelacionada String?              @db.VarChar(50)
+  tareas           Tarea[]
+  estadoFlow       TipoTareaEstadoFlow?
+  estadoPeticionFlow TipoTareaEstadoPeticionFlow?
 }
 
 model EstadoTarea {
@@ -134,7 +138,15 @@ model EstadoPeticion {
   id          String  @id @default(uuid()) @db.Uuid
   codigo      String  @unique @db.VarChar(50)
   descripcion String?
+  orden       Int     @default(0)
+  porDefecto  Boolean @default(false)
+  activo      Boolean @default(true)
   tareas      Tarea[]
+  // Flow relations
+  flowsInicial        TipoTareaEstadoPeticionFlow[] @relation("EstadoPeticionInicial")
+  flowEstados         TipoTareaEstadoPeticion[]
+  transicionesOrigen  TipoTareaTransicionPeticion[] @relation("TransicionPeticionOrigen")
+  transicionesDestino TipoTareaTransicionPeticion[] @relation("TransicionPeticionDestino")
 }
 
 model Modulo {
@@ -821,6 +833,73 @@ model TipoTareaTransicion {
 
   estadoDestinoId String      @db.Uuid
   estadoDestino   EstadoTarea @relation("TransicionDestino", fields: [estadoDestinoId], references: [id])
+
+  // Who can make this transition
+  permiteAgente   Boolean     @default(true)
+  permiteCliente  Boolean     @default(false)
+
+  // Optional: trigger notification workflow on this transition
+  notificar       Boolean     @default(false)
+
+  orden           Int         @default(0)  // Order in dropdown
+
+  @@unique([flowId, estadoOrigenId, estadoDestinoId])
+  @@index([flowId, estadoOrigenId])
+}
+
+// ============================================================================
+// ESTADO PETICION FLOW (Secondary status workflow)
+// Defines allowed EstadoPeticion transitions per task type
+// Only applies when TipoTarea.tablaRelacionada = "EstadoPeticion"
+// ============================================================================
+
+// State flow definition for EstadoPeticion per task type
+model TipoTareaEstadoPeticionFlow {
+  id              String      @id @default(uuid()) @db.Uuid
+  tipoTareaId     String      @unique @db.Uuid
+  tipoTarea       TipoTarea   @relation(fields: [tipoTareaId], references: [id], onDelete: Cascade)
+
+  // Allowed EstadoPeticion values for this task type
+  estadosPermitidos TipoTareaEstadoPeticion[]
+
+  // Transitions between EstadoPeticion values
+  transiciones    TipoTareaTransicionPeticion[]
+
+  // Initial EstadoPeticion for new tasks of this type (overrides EstadoPeticion.porDefecto)
+  estadoInicialId String?     @db.Uuid
+  estadoInicial   EstadoPeticion? @relation("EstadoPeticionInicial", fields: [estadoInicialId], references: [id])
+
+  activo          Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Which EstadoPeticion values are allowed for a task type
+model TipoTareaEstadoPeticion {
+  id              String      @id @default(uuid()) @db.Uuid
+  flowId          String      @db.Uuid
+  flow            TipoTareaEstadoPeticionFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  estadoId        String      @db.Uuid
+  estado          EstadoPeticion @relation(fields: [estadoId], references: [id])
+
+  orden           Int         @default(0)  // Display order in this flow
+  visibleCliente  Boolean     @default(true)  // Can clients see this status?
+
+  @@unique([flowId, estadoId])
+  @@index([flowId])
+}
+
+// Allowed transitions between EstadoPeticion values
+model TipoTareaTransicionPeticion {
+  id              String      @id @default(uuid()) @db.Uuid
+  flowId          String      @db.Uuid
+  flow            TipoTareaEstadoPeticionFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  estadoOrigenId  String      @db.Uuid
+  estadoOrigen    EstadoPeticion @relation("TransicionPeticionOrigen", fields: [estadoOrigenId], references: [id])
+
+  estadoDestinoId String      @db.Uuid
+  estadoDestino   EstadoPeticion @relation("TransicionPeticionDestino", fields: [estadoDestinoId], references: [id])
 
   // Who can make this transition
   permiteAgente   Boolean     @default(true)

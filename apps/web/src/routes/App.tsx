@@ -18,7 +18,9 @@ import Roles from "./config/Roles";
 import TiposTarea from "./config/TiposTarea";
 import EstadosTarea from "./config/EstadosTarea";
 import PrioridadesTarea from "./config/PrioridadesTarea";
+import EstadosPeticion from "./config/EstadosPeticion";
 import EstadoFlows from "./config/EstadoFlows";
+import EstadoPeticionFlows from "./config/EstadoPeticionFlows";
 import Plantillas from "./config/Plantillas";
 import Configuracion from "./config/Configuracion";
 import General from "./config/General";
@@ -53,7 +55,9 @@ export default function App() {
         <Route path="config/tipos-tarea" element={<TiposTarea />} />
         <Route path="config/estados-tarea" element={<EstadosTarea />} />
         <Route path="config/prioridades-tarea" element={<PrioridadesTarea />} />
+        <Route path="config/estados-peticion" element={<EstadosPeticion />} />
         <Route path="config/estado-flows" element={<EstadoFlows />} />
+        <Route path="config/estado-peticion-flows" element={<EstadoPeticionFlows />} />
         <Route path="config/plantillas" element={<Plantillas />} />
         <Route path="config/notificaciones" element={<Configuracion />} />
         <Route path="config/log-notificaciones" element={<LogNotificaciones />} />

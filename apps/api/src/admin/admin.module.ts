@@ -19,6 +19,7 @@ import { LogNotificacionesAdminController } from "./log-notificaciones.admin.con
 import { NotificacionConfigAdminController } from "./notificacion-config.admin.controller";
 import { WorkflowsAdminController } from "./workflows.admin.controller";
 import { EstadoFlowAdminController } from "./estado-flow.admin.controller";
+import { EstadoPeticionFlowAdminController } from "./estado-peticion-flow.admin.controller";
 
 @Module({
   imports: [PrismaModule, AuthModule, MailModule],
@@ -39,6 +40,7 @@ import { EstadoFlowAdminController } from "./estado-flow.admin.controller";
     NotificacionConfigAdminController,
     WorkflowsAdminController,
     EstadoFlowAdminController,
+    EstadoPeticionFlowAdminController,
   ],
   providers: [NotificationQueueService],
 })
