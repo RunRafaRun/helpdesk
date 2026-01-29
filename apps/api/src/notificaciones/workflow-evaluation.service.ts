@@ -5,9 +5,11 @@ import {
   WorkflowConditionField,
   WorkflowConditionOperator,
   WorkflowRecipientType,
+  WorkflowActionType,
   NotificationWorkflow,
   NotificationWorkflowCondition,
   NotificationWorkflowRecipient,
+  NotificationWorkflowAction,
   Tarea,
   EventoTipo,
 } from "@prisma/client";
@@ -25,7 +27,20 @@ export interface WorkflowContext {
     prioridadNuevaId?: string | null;
     asignadoAnteriorId?: string | null;
     asignadoNuevoId?: string | null;
+    tipoAnteriorId?: string | null;
+    tipoNuevoId?: string | null;
+    moduloAnteriorId?: string | null;
+    moduloNuevoId?: string | null;
+    releaseAnteriorId?: string | null;
+    releaseNuevoId?: string | null;
   };
+}
+
+// Workflow action to execute
+export interface WorkflowActionResult {
+  actionType: WorkflowActionType;
+  value: string | null;
+  orden: number;
 }
 
 // Result of evaluating a workflow
@@ -37,6 +52,7 @@ export interface WorkflowResult {
     to: string[];
     cc: string[];
   };
+  actions: WorkflowActionResult[];
   plantillaId?: string | null;
   asuntoCustom?: string | null;
   stopOnMatch: boolean;
@@ -46,6 +62,7 @@ export interface WorkflowResult {
 export interface NotificationRecipients {
   to: string[];
   cc: string[];
+  actions: WorkflowActionResult[];
   plantillaId?: string | null;
   asuntoCustom?: string | null;
 }
@@ -53,6 +70,7 @@ export interface NotificationRecipients {
 type WorkflowWithRelations = NotificationWorkflow & {
   conditions: NotificationWorkflowCondition[];
   recipients: NotificationWorkflowRecipient[];
+  actions: NotificationWorkflowAction[];
 };
 
 @Injectable()
@@ -97,17 +115,21 @@ export class WorkflowEvaluationService {
       include: {
         conditions: true,
         recipients: true,
+        actions: {
+          orderBy: { orden: "asc" },
+        },
       },
       orderBy: { orden: "asc" },
     });
 
     if (workflows.length === 0) {
       this.logger.debug(`No active workflows for trigger: ${trigger}`);
-      return { to: [], cc: [] };
+      return { to: [], cc: [], actions: [] };
     }
 
     const allTo = new Set<string>();
     const allCc = new Set<string>();
+    const allActions: WorkflowActionResult[] = [];
     let selectedPlantillaId: string | null = null;
     let selectedAsuntoCustom: string | null = null;
 
@@ -122,6 +144,9 @@ export class WorkflowEvaluationService {
         // Add recipients
         result.recipients.to.forEach((email) => allTo.add(email));
         result.recipients.cc.forEach((email) => allCc.add(email));
+
+        // Add actions (in order)
+        allActions.push(...result.actions);
 
         // Use first matching workflow's template/subject if not already set
         if (!selectedPlantillaId && result.plantillaId) {
@@ -147,6 +172,7 @@ export class WorkflowEvaluationService {
     return {
       to: Array.from(allTo),
       cc: ccArray,
+      actions: allActions,
       plantillaId: selectedPlantillaId,
       asuntoCustom: selectedAsuntoCustom,
     };
@@ -173,6 +199,7 @@ export class WorkflowEvaluationService {
         workflowName: workflow.nombre,
         matched: false,
         recipients: { to: [], cc: [] },
+        actions: [],
         stopOnMatch: workflow.stopOnMatch,
       };
     }
@@ -183,11 +210,19 @@ export class WorkflowEvaluationService {
       tarea
     );
 
+    // Extract actions
+    const actions: WorkflowActionResult[] = workflow.actions.map((a) => ({
+      actionType: a.actionType,
+      value: a.value,
+      orden: a.orden,
+    }));
+
     return {
       workflowId: workflow.id,
       workflowName: workflow.nombre,
       matched: true,
       recipients,
+      actions,
       plantillaId: workflow.plantillaId,
       asuntoCustom: workflow.asuntoCustom,
       stopOnMatch: workflow.stopOnMatch,
@@ -307,6 +342,18 @@ export class WorkflowEvaluationService {
         return changes?.prioridadAnteriorId;
       case WorkflowConditionField.PRIORIDAD_NUEVA_ID:
         return changes?.prioridadNuevaId;
+      case WorkflowConditionField.TIPO_ANTERIOR_ID:
+        return changes?.tipoAnteriorId;
+      case WorkflowConditionField.TIPO_NUEVO_ID:
+        return changes?.tipoNuevoId;
+      case WorkflowConditionField.MODULO_ANTERIOR_ID:
+        return changes?.moduloAnteriorId;
+      case WorkflowConditionField.MODULO_NUEVO_ID:
+        return changes?.moduloNuevoId;
+      case WorkflowConditionField.RELEASE_ANTERIOR_ID:
+        return changes?.releaseAnteriorId;
+      case WorkflowConditionField.RELEASE_NUEVO_ID:
+        return changes?.releaseNuevoId;
       default:
         return undefined;
     }

@@ -60,3 +60,55 @@ export class ActualizarPlantillaDto {
   @ApiPropertyOptional() @IsOptional() orden?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() activo?: boolean;
 }
+
+// Estado Flow DTOs - State machine configuration for task types
+import { IsArray, IsInt, IsUUID, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+
+export class EstadoPermitidoDto {
+  @ApiProperty() @IsUUID() estadoId!: string;
+  @ApiPropertyOptional() @IsOptional() @IsInt() orden?: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() visibleCliente?: boolean;
+}
+
+export class TransicionDto {
+  @ApiProperty() @IsUUID() estadoOrigenId!: string;
+  @ApiProperty() @IsUUID() estadoDestinoId!: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() permiteAgente?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() permiteCliente?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() notificar?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsInt() orden?: number;
+}
+
+export class CreateEstadoFlowDto {
+  @ApiProperty() @IsUUID() tipoTareaId!: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() estadoInicialId?: string;
+  @ApiProperty({ type: [EstadoPermitidoDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EstadoPermitidoDto)
+  estadosPermitidos!: EstadoPermitidoDto[];
+  @ApiProperty({ type: [TransicionDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TransicionDto)
+  transiciones!: TransicionDto[];
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() activo?: boolean;
+}
+
+export class UpdateEstadoFlowDto {
+  @ApiPropertyOptional() @IsOptional() @IsUUID() estadoInicialId?: string;
+  @ApiPropertyOptional({ type: [EstadoPermitidoDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EstadoPermitidoDto)
+  estadosPermitidos?: EstadoPermitidoDto[];
+  @ApiPropertyOptional({ type: [TransicionDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TransicionDto)
+  transiciones?: TransicionDto[];
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() activo?: boolean;
+}

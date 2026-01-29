@@ -16,6 +16,7 @@ import {
   WorkflowConditionField,
   WorkflowConditionOperator,
   WorkflowRecipientType,
+  WorkflowActionType,
 } from "@prisma/client";
 
 // ============================================================================
@@ -68,6 +69,30 @@ export class WorkflowRecipientDto {
   @IsOptional()
   @IsBoolean()
   isCc?: boolean;
+}
+
+// ============================================================================
+// Action DTO
+// ============================================================================
+export class WorkflowActionDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @ApiProperty({ enum: WorkflowActionType })
+  @IsEnum(WorkflowActionType)
+  actionType!: WorkflowActionType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  value?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  orden?: number;
 }
 
 // ============================================================================
@@ -136,6 +161,13 @@ export class CreateWorkflowDto {
   @ValidateNested({ each: true })
   @Type(() => WorkflowRecipientDto)
   recipients?: WorkflowRecipientDto[];
+
+  @ApiPropertyOptional({ type: [WorkflowActionDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowActionDto)
+  actions?: WorkflowActionDto[];
 }
 
 // ============================================================================
@@ -205,6 +237,13 @@ export class UpdateWorkflowDto {
   @ValidateNested({ each: true })
   @Type(() => WorkflowRecipientDto)
   recipients?: WorkflowRecipientDto[];
+
+  @ApiPropertyOptional({ type: [WorkflowActionDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowActionDto)
+  actions?: WorkflowActionDto[];
 }
 
 // ============================================================================
@@ -220,6 +259,7 @@ export interface WorkflowListItem {
   stopOnMatch: boolean;
   conditionsCount: number;
   recipientsCount: number;
+  actionsCount: number;
   plantilla?: { id: string; codigo: string } | null;
   createdAt: Date;
   updatedAt: Date;
@@ -250,6 +290,12 @@ export interface WorkflowDetail {
     recipientType: WorkflowRecipientType;
     value?: string | null;
     isCc: boolean;
+  }[];
+  actions: {
+    id: string;
+    actionType: WorkflowActionType;
+    value?: string | null;
+    orden: number;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -298,6 +344,12 @@ export const CONDITION_FIELD_LABELS: Record<WorkflowConditionField, string> = {
   ESTADO_NUEVO_ID: "Estado nuevo",
   PRIORIDAD_ANTERIOR_ID: "Prioridad anterior",
   PRIORIDAD_NUEVA_ID: "Prioridad nueva",
+  TIPO_ANTERIOR_ID: "Tipo anterior",
+  TIPO_NUEVO_ID: "Tipo nuevo",
+  MODULO_ANTERIOR_ID: "Modulo anterior",
+  MODULO_NUEVO_ID: "Modulo nuevo",
+  RELEASE_ANTERIOR_ID: "Release anterior",
+  RELEASE_NUEVO_ID: "Release nuevo",
 };
 
 export const CONDITION_OPERATOR_LABELS: Record<WorkflowConditionOperator, string> = {
@@ -322,4 +374,13 @@ export const RECIPIENT_TYPE_LABELS: Record<WorkflowRecipientType, string> = {
   AGENTES_ESPECIFICOS: "Agentes especificos",
   ROLES_ESPECIFICOS: "Roles especificos",
   EMAILS_MANUALES: "Emails manuales",
+};
+
+export const ACTION_TYPE_LABELS: Record<WorkflowActionType, string> = {
+  CAMBIAR_ESTADO: "Cambiar estado",
+  CAMBIAR_PRIORIDAD: "Cambiar prioridad",
+  CAMBIAR_TIPO: "Cambiar tipo",
+  ASIGNAR_AGENTE: "Asignar agente",
+  CAMBIAR_MODULO: "Cambiar modulo",
+  CAMBIAR_RELEASE: "Cambiar release",
 };

@@ -390,4 +390,134 @@ export class LookupAdminController {
       orderBy: [{ scope: "asc" }, { codigo: "asc" }],
     });
   }
+
+  // ==================== ESTADOS PERMITIDOS (for task state machine) ====================
+  /**
+   * Get allowed next statuses based on task type, current status, and actor type.
+   * If no flow is configured for the task type, returns all active statuses.
+   *
+   * @param tipoTareaId - Task type ID
+   * @param estadoActualId - Current status ID (optional, for new tasks)
+   * @param actorTipo - Actor type: AGENTE or CLIENTE
+   */
+  @Get("estados-permitidos")
+  async listEstadosPermitidos(
+    @Query("tipoTareaId") tipoTareaId: string,
+    @Query("estadoActualId") estadoActualId?: string,
+    @Query("actorTipo") actorTipo?: string
+  ) {
+    if (!tipoTareaId) {
+      throw new BadRequestException("tipoTareaId es requerido");
+    }
+
+    const isCliente = actorTipo === "CLIENTE";
+
+    // Get the flow for this task type
+    const flow = await this.prisma.tipoTareaEstadoFlow.findUnique({
+      where: { tipoTareaId },
+      include: {
+        estadosPermitidos: {
+          include: {
+            estado: true,
+          },
+          orderBy: { orden: "asc" },
+        },
+        transiciones: {
+          include: {
+            estadoDestino: true,
+          },
+          orderBy: { orden: "asc" },
+        },
+        estadoInicial: true,
+      },
+    });
+
+    // If no flow configured, return all active statuses
+    if (!flow || !flow.activo) {
+      return this.prisma.estadoTarea.findMany({
+        where: { activo: true },
+        orderBy: { orden: "asc" },
+      });
+    }
+
+    // If no current status (new task), return the initial status or allowed statuses
+    if (!estadoActualId) {
+      if (flow.estadoInicial) {
+        return [flow.estadoInicial];
+      }
+      // Return first allowed status or all allowed statuses for new tasks
+      const allowedEstados = flow.estadosPermitidos
+        .filter((ep) => !isCliente || ep.visibleCliente)
+        .map((ep) => ep.estado);
+      return allowedEstados;
+    }
+
+    // Get allowed transitions from current status
+    const allowedTransitions = flow.transiciones.filter((t) => {
+      if (t.estadoOrigenId !== estadoActualId) return false;
+      if (isCliente && !t.permiteCliente) return false;
+      if (!isCliente && !t.permiteAgente) return false;
+      return true;
+    });
+
+    // Get the allowed statuses
+    const allowedStatusIds = new Set(allowedTransitions.map((t) => t.estadoDestinoId));
+
+    // Also include current status if it's in the allowed statuses list
+    const currentStatusInFlow = flow.estadosPermitidos.find((ep) => ep.estadoId === estadoActualId);
+    if (currentStatusInFlow) {
+      allowedStatusIds.add(estadoActualId);
+    }
+
+    // Filter by visibility for clients
+    const visibleEstadoIds = new Set(
+      flow.estadosPermitidos
+        .filter((ep) => !isCliente || ep.visibleCliente)
+        .map((ep) => ep.estadoId)
+    );
+
+    // Return estados that are both allowed AND visible
+    const finalStatusIds = [...allowedStatusIds].filter((id) => visibleEstadoIds.has(id)) as string[];
+
+    const estados = await this.prisma.estadoTarea.findMany({
+      where: { id: { in: finalStatusIds } },
+      orderBy: { orden: "asc" },
+    });
+
+    return estados;
+  }
+
+  /**
+   * Get the initial status for a task type based on flow configuration.
+   * Falls back to default status or first status if no flow is configured.
+   */
+  @Get("estado-inicial/:tipoTareaId")
+  async getEstadoInicial(@Param("tipoTareaId") tipoTareaId: string) {
+    // Get the flow for this task type
+    const flow = await this.prisma.tipoTareaEstadoFlow.findUnique({
+      where: { tipoTareaId },
+      include: {
+        estadoInicial: true,
+      },
+    });
+
+    // If flow has an initial status, return it
+    if (flow?.activo && flow.estadoInicial) {
+      return flow.estadoInicial;
+    }
+
+    // Fallback: get default status
+    const defaultEstado = await this.prisma.estadoTarea.findFirst({
+      where: { porDefecto: true, activo: true },
+    });
+    if (defaultEstado) {
+      return defaultEstado;
+    }
+
+    // Fallback: get first status by orden
+    return this.prisma.estadoTarea.findFirst({
+      where: { activo: true },
+      orderBy: { orden: "asc" },
+    });
+  }
 }

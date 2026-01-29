@@ -95,23 +95,28 @@ model ClienteUsuario {
 }
 
 model TipoTarea {
-  id          String  @id @default(uuid()) @db.Uuid
-  codigo      String  @unique @db.VarChar(50)
+  id          String               @id @default(uuid()) @db.Uuid
+  codigo      String               @unique @db.VarChar(50)
   descripcion String?
-  orden       Int     @default(0)
-  porDefecto  Boolean @default(false)
-  activo      Boolean @default(true)
+  orden       Int                  @default(0)
+  porDefecto  Boolean              @default(false)
+  activo      Boolean              @default(true)
   tareas      Tarea[]
+  estadoFlow  TipoTareaEstadoFlow?
 }
 
 model EstadoTarea {
-  id          String  @id @default(uuid()) @db.Uuid
-  codigo      String  @unique @db.VarChar(50)
-  descripcion String?
-  orden       Int     @default(0)
-  porDefecto  Boolean @default(false)
-  activo      Boolean @default(true)
-  tareas      Tarea[]
+  id                  String                @id @default(uuid()) @db.Uuid
+  codigo              String                @unique @db.VarChar(50)
+  descripcion         String?
+  orden               Int                   @default(0)
+  porDefecto          Boolean               @default(false)
+  activo              Boolean               @default(true)
+  tareas              Tarea[]
+  flowsInicial        TipoTareaEstadoFlow[] @relation("EstadoInicial")
+  flowEstados         TipoTareaEstado[]
+  transicionesOrigen  TipoTareaTransicion[] @relation("TransicionOrigen")
+  transicionesDestino TipoTareaTransicion[] @relation("TransicionDestino")
 }
 
 model PrioridadTarea {
@@ -638,6 +643,15 @@ enum WorkflowConditionField {
   ESTADO_NUEVO_ID        // New status (for CAMBIO_ESTADO)
   PRIORIDAD_ANTERIOR_ID  // Previous priority
   PRIORIDAD_NUEVA_ID     // New priority
+  // For CAMBIO_TIPO events
+  TIPO_ANTERIOR_ID       // Previous type (for CAMBIO_TIPO)
+  TIPO_NUEVO_ID          // New type (for CAMBIO_TIPO)
+  // For CAMBIO_MODULO events
+  MODULO_ANTERIOR_ID     // Previous module
+  MODULO_NUEVO_ID        // New module
+  // For CAMBIO_RELEASE events
+  RELEASE_ANTERIOR_ID    // Previous release
+  RELEASE_NUEVO_ID       // New release
 }
 
 // Comparison operators
@@ -693,6 +707,7 @@ model NotificationWorkflow {
   plantilla   Plantilla?                  @relation(fields: [plantillaId], references: [id])
   conditions  NotificationWorkflowCondition[]
   recipients  NotificationWorkflowRecipient[]
+  actions     NotificationWorkflowAction[]
 
   @@index([trigger, activo])
   @@index([orden])
@@ -714,6 +729,29 @@ model NotificationWorkflowCondition {
   @@index([workflowId])
 }
 
+// Workflow action types - WHAT changes to make when conditions match
+enum WorkflowActionType {
+  CAMBIAR_ESTADO
+  CAMBIAR_PRIORIDAD
+  CAMBIAR_TIPO
+  ASIGNAR_AGENTE
+  CAMBIAR_MODULO
+  CAMBIAR_RELEASE
+}
+
+// Workflow actions - automated field changes when workflow matches
+model NotificationWorkflowAction {
+  id         String              @id @default(uuid()) @db.Uuid
+  workflowId String              @db.Uuid
+  actionType WorkflowActionType
+  value      String?             @db.Text  // ID of the new value (e.g., estadoId, agenteId)
+  orden      Int                 @default(0)
+
+  workflow   NotificationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
 // Workflow recipients - who receives the notification
 model NotificationWorkflowRecipient {
   id           String                @id @default(uuid()) @db.Uuid
@@ -729,4 +767,70 @@ model NotificationWorkflowRecipient {
   workflow     NotificationWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
+}
+
+// ============================================================================
+// TASK STATE MACHINE / PROCESS WORKFLOW
+// Defines allowed state transitions per task type
+// ============================================================================
+
+// State flow definition for a task type
+model TipoTareaEstadoFlow {
+  id              String      @id @default(uuid()) @db.Uuid
+  tipoTareaId     String      @unique @db.Uuid
+  tipoTarea       TipoTarea   @relation(fields: [tipoTareaId], references: [id], onDelete: Cascade)
+
+  // Allowed statuses for this task type
+  estadosPermitidos TipoTareaEstado[]
+
+  // Transitions between statuses
+  transiciones    TipoTareaTransicion[]
+
+  // Initial status for new tasks of this type (overrides EstadoTarea.porDefecto)
+  estadoInicialId String?     @db.Uuid
+  estadoInicial   EstadoTarea? @relation("EstadoInicial", fields: [estadoInicialId], references: [id])
+
+  activo          Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Which statuses are allowed for a task type
+model TipoTareaEstado {
+  id              String      @id @default(uuid()) @db.Uuid
+  flowId          String      @db.Uuid
+  flow            TipoTareaEstadoFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  estadoId        String      @db.Uuid
+  estado          EstadoTarea @relation(fields: [estadoId], references: [id])
+
+  orden           Int         @default(0)  // Display order in this flow
+  visibleCliente  Boolean     @default(true)  // Can clients see this status?
+
+  @@unique([flowId, estadoId])
+  @@index([flowId])
+}
+
+// Allowed transitions between statuses
+model TipoTareaTransicion {
+  id              String      @id @default(uuid()) @db.Uuid
+  flowId          String      @db.Uuid
+  flow            TipoTareaEstadoFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  estadoOrigenId  String      @db.Uuid
+  estadoOrigen    EstadoTarea @relation("TransicionOrigen", fields: [estadoOrigenId], references: [id])
+
+  estadoDestinoId String      @db.Uuid
+  estadoDestino   EstadoTarea @relation("TransicionDestino", fields: [estadoDestinoId], references: [id])
+
+  // Who can make this transition
+  permiteAgente   Boolean     @default(true)
+  permiteCliente  Boolean     @default(false)
+
+  // Optional: trigger notification workflow on this transition
+  notificar       Boolean     @default(false)
+
+  orden           Int         @default(0)  // Order in dropdown
+
+  @@unique([flowId, estadoOrigenId, estadoDestinoId])
+  @@index([flowId, estadoOrigenId])
 }

@@ -16,6 +16,7 @@ import {
   deleteComentarioTarea,
   listAgentes,
   listEstadosTarea,
+  listEstadosPermitidos,
   listPrioridadesTarea,
   listTiposTarea,
   listModulosLookup,
@@ -919,6 +920,7 @@ export default function TareaFicha() {
   // Lookups
   const [agentes, setAgentes] = React.useState<Agente[]>([]);
   const [estados, setEstados] = React.useState<EstadoTarea[]>([]);
+  const [estadosPermitidosList, setEstadosPermitidosList] = React.useState<EstadoTarea[]>([]);
   const [prioridades, setPrioridades] = React.useState<PrioridadTarea[]>([]);
   const [tipos, setTipos] = React.useState<TipoTarea[]>([]);
   const [modulos, setModulos] = React.useState<ModuloLookup[]>([]);
@@ -1012,6 +1014,26 @@ export default function TareaFicha() {
     loadLookups();
     loadTarea();
   }, [id]);
+
+  // Load allowed estados when task is loaded (for state machine)
+  React.useEffect(() => {
+    async function loadEstadosPermitidos() {
+      if (!tarea?.tipoId) {
+        // If no task, use all estados
+        setEstadosPermitidosList(estados);
+        return;
+      }
+      try {
+        const permitidos = await listEstadosPermitidos(tarea.tipoId, tarea.estadoId, "AGENTE");
+        setEstadosPermitidosList(permitidos);
+      } catch (e) {
+        // If error loading permitted states, fall back to all states
+        console.error("Error loading estados permitidos:", e);
+        setEstadosPermitidosList(estados);
+      }
+    }
+    loadEstadosPermitidos();
+  }, [tarea?.tipoId, tarea?.estadoId, estados]);
 
   async function handleSave() {
     if (!id) return;
@@ -1860,7 +1882,7 @@ export default function TareaFicha() {
                           onChange={(e) => setEditForm({ ...editForm, estadoId: e.target.value })}
                         >
                           <option value="">Sin estado</option>
-                          {estados.map((e) => (
+                          {(estadosPermitidosList.length > 0 ? estadosPermitidosList : estados).map((e) => (
                             <option key={e.id} value={e.id}>{e.codigo}</option>
                           ))}
                         </select>

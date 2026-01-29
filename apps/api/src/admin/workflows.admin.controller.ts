@@ -61,6 +61,7 @@ export class WorkflowsAdminController {
           select: {
             conditions: true,
             recipients: true,
+            actions: true,
           },
         },
       },
@@ -77,6 +78,7 @@ export class WorkflowsAdminController {
       stopOnMatch: w.stopOnMatch,
       conditionsCount: w._count.conditions,
       recipientsCount: w._count.recipients,
+      actionsCount: w._count.actions,
       plantilla: w.plantilla,
       createdAt: w.createdAt,
       updatedAt: w.updatedAt,
@@ -97,6 +99,9 @@ export class WorkflowsAdminController {
         },
         recipients: {
           orderBy: { recipientType: "asc" },
+        },
+        actions: {
+          orderBy: { orden: "asc" },
         },
       },
     });
@@ -130,6 +135,12 @@ export class WorkflowsAdminController {
         recipientType: r.recipientType,
         value: r.value,
         isCc: r.isCc,
+      })),
+      actions: workflow.actions.map((a) => ({
+        id: a.id,
+        actionType: a.actionType,
+        value: a.value,
+        orden: a.orden,
       })),
       createdAt: workflow.createdAt,
       updatedAt: workflow.updatedAt,
@@ -172,11 +183,21 @@ export class WorkflowsAdminController {
               })),
             }
           : undefined,
+        actions: dto.actions
+          ? {
+              create: dto.actions.map((a) => ({
+                actionType: a.actionType,
+                value: a.value,
+                orden: a.orden ?? 0,
+              })),
+            }
+          : undefined,
       },
       include: {
         plantilla: { select: { id: true, codigo: true, descripcion: true } },
         conditions: true,
         recipients: true,
+        actions: true,
       },
     });
 
@@ -267,6 +288,25 @@ export class WorkflowsAdminController {
           });
         }
       }
+
+      // Replace actions if provided
+      if (dto.actions !== undefined) {
+        // Delete all existing actions
+        await tx.notificationWorkflowAction.deleteMany({
+          where: { workflowId: id },
+        });
+        // Create new actions
+        if (dto.actions.length > 0) {
+          await tx.notificationWorkflowAction.createMany({
+            data: dto.actions.map((a) => ({
+              workflowId: id,
+              actionType: a.actionType,
+              value: a.value,
+              orden: a.orden ?? 0,
+            })),
+          });
+        }
+      }
     });
 
     // Fetch and return updated workflow
@@ -319,6 +359,7 @@ export class WorkflowsAdminController {
       include: {
         conditions: true,
         recipients: true,
+        actions: true,
       },
     });
 
@@ -353,11 +394,19 @@ export class WorkflowsAdminController {
             isCc: r.isCc,
           })),
         },
+        actions: {
+          create: original.actions.map((a) => ({
+            actionType: a.actionType,
+            value: a.value,
+            orden: a.orden,
+          })),
+        },
       },
       include: {
         plantilla: { select: { id: true, codigo: true, descripcion: true } },
         conditions: true,
         recipients: true,
+        actions: true,
       },
     });
 
@@ -402,6 +451,12 @@ export class WorkflowsAdminController {
         value: r.value,
         isCc: r.isCc,
       })),
+      actions: workflow.actions?.map((a: any) => ({
+        id: a.id,
+        actionType: a.actionType,
+        value: a.value,
+        orden: a.orden,
+      })) ?? [],
       createdAt: workflow.createdAt,
       updatedAt: workflow.updatedAt,
     };
