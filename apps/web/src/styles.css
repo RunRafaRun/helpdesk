@@ -574,6 +574,43 @@ body{ background: var(--bg); color: var(--text); }
   background: rgba(255, 220, 0, 0.25);
 }
 
+/* Numero search dropdown - more compact */
+.numero-dropdown {
+  min-width: 320px;
+  max-width: 400px;
+}
+
+.numero-dropdown .search-result-task {
+  padding: 8px 12px;
+}
+
+.numero-dropdown .task-numero {
+  min-width: 80px;
+}
+
+.numero-result {
+  border-bottom: 1px solid var(--border);
+}
+
+.numero-result:last-child {
+  border-bottom: none;
+}
+
+.search-results-more {
+  font-weight: normal;
+  opacity: 0.7;
+}
+
+/* Position numero dropdown correctly */
+.numero-search {
+  position: relative;
+}
+
+.numero-search .search-dropdown {
+  right: 0;
+  left: auto;
+}
+
 /* Responsive adjustments */
 @media (max-width: 900px) {
   .global-search {

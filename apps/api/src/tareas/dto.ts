@@ -216,3 +216,18 @@ export class BuscarPorNumeroDto {
   @IsNotEmpty()
   numero!: string;
 }
+
+export class BuscarPorPatronDto {
+  @ApiProperty({ description: "Patrón de búsqueda con wildcard *, ej: *2492, 2025*, *123*" })
+  @IsString()
+  @IsNotEmpty()
+  patron!: string;
+
+  @ApiPropertyOptional({ description: "Cantidad de resultados a devolver", default: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  limit?: number = 10;
+}

@@ -633,6 +633,72 @@ export class TareasService {
   }
 
   /**
+   * Search for tasks by pattern with wildcard support.
+   * Supports * as wildcard: *2492 (ends with), 2025* (starts with), *123* (contains)
+   * Returns a list of matching tasks (limited).
+   */
+  async buscarPorPatron(patron: string, limit = 10) {
+    if (!patron || patron.trim().length < 2) {
+      return { items: [], total: 0 };
+    }
+
+    const pattern = patron.trim();
+    
+    // Convert wildcard pattern to Prisma query
+    // * at start = endsWith, * at end = startsWith, * on both = contains
+    let where: { numero: { startsWith?: string; endsWith?: string; contains?: string } } | { numero: string };
+    
+    const hasStartWildcard = pattern.startsWith("*");
+    const hasEndWildcard = pattern.endsWith("*");
+    const cleanPattern = pattern.replace(/\*/g, "");
+    
+    if (!cleanPattern) {
+      return { items: [], total: 0 };
+    }
+
+    if (hasStartWildcard && hasEndWildcard) {
+      // *123* = contains
+      where = { numero: { contains: cleanPattern } };
+    } else if (hasStartWildcard) {
+      // *123 = ends with
+      where = { numero: { endsWith: cleanPattern } };
+    } else if (hasEndWildcard) {
+      // 123* = starts with
+      where = { numero: { startsWith: cleanPattern } };
+    } else {
+      // No wildcard = exact match
+      where = { numero: cleanPattern };
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.tarea.findMany({
+        where,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          cliente: { select: { codigo: true, descripcion: true } },
+          estado: { select: { codigo: true } },
+          prioridad: { select: { codigo: true, color: true } },
+        },
+      }),
+      this.prisma.tarea.count({ where }),
+    ]);
+
+    return {
+      items: items.map((t) => ({
+        id: t.id,
+        numero: t.numero,
+        titulo: t.titulo,
+        cliente: t.cliente,
+        estado: t.estado,
+        prioridad: t.prioridad,
+        createdAt: t.createdAt,
+      })),
+      total,
+    };
+  }
+
+  /**
    * Search for tasks and comments containing the given text.
    * Returns a list of matching tasks with their matching comments.
    */

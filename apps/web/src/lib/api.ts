@@ -742,6 +742,26 @@ export async function buscarTareaPorNumero(numero: string): Promise<Tarea | null
   return request<Tarea | null>(`/tareas/buscar/numero/${encodeURIComponent(numero)}`);
 }
 
+export type PatronSearchResult = {
+  items: Array<{
+    id: string;
+    numero: string;
+    titulo: string;
+    cliente: { codigo: string; descripcion?: string | null };
+    estado: { codigo: string } | null;
+    prioridad: { codigo: string; color?: string | null };
+    createdAt: string;
+  }>;
+  total: number;
+};
+
+export async function buscarTareaPorPatron(patron: string, limit = 10): Promise<PatronSearchResult> {
+  const params = new URLSearchParams();
+  params.set("patron", patron);
+  if (limit) params.set("limit", String(limit));
+  return request<PatronSearchResult>(`/tareas/buscar/patron?${params.toString()}`);
+}
+
 export async function addComentarioTarea(id: string, input: {
   tipo: "MENSAJE_CLIENTE" | "RESPUESTA_AGENTE" | "NOTA_INTERNA";
   cuerpo: string;
