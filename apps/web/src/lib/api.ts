@@ -708,6 +708,7 @@ export async function updateTarea(id: string, input: {
   releaseId?: string;
   hotfixId?: string;
   reproducido?: boolean;
+  estadoPeticionId?: string;
 }) {
   return request<Tarea>(`/tareas/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
@@ -873,6 +874,21 @@ export async function updateEstadoPeticion(id: string, input: { codigo?: string;
 export async function deleteEstadoPeticion(id: string, replacementId?: string) {
   const qs = replacementId ? `?replacementId=${encodeURIComponent(replacementId)}` : "";
   return request<void>(`/admin/lookup/estados-peticion/${id}${qs}`, { method: "DELETE" });
+}
+
+/**
+ * Get allowed Estado Petición values based on flow configuration.
+ * Similar to listEstadosPermitidos but for Estado Petición.
+ */
+export async function listEstadosPeticionPermitidos(opts: {
+  tipoTareaId: string;
+  estadoActualId?: string;
+  actorTipo?: "AGENTE" | "CLIENTE";
+}) {
+  const params = new URLSearchParams({ tipoTareaId: opts.tipoTareaId });
+  if (opts.estadoActualId) params.set("estadoActualId", opts.estadoActualId);
+  if (opts.actorTipo) params.set("actorTipo", opts.actorTipo);
+  return request<EstadoPeticion[]>(`/admin/lookup/estados-peticion-permitidos?${params}`);
 }
 
 // ==================== LOOKUP ENDPOINTS (no permissions required) ====================
@@ -1174,7 +1190,8 @@ export type WorkflowTrigger =
   | "CAMBIO_PRIORIDAD"
   | "CAMBIO_TIPO"
   | "CAMBIO_MODULO"
-  | "CAMBIO_RELEASE";
+  | "CAMBIO_RELEASE"
+  | "CAMBIO_ESTADO_PETICION";
 
 export type WorkflowConditionField =
   | "CLIENTE_ID"
@@ -1206,7 +1223,13 @@ export type WorkflowConditionField =
   | "MODULO_ANTERIOR_ID"
   | "MODULO_NUEVO_ID"
   | "RELEASE_ANTERIOR_ID"
-  | "RELEASE_NUEVO_ID";
+  | "RELEASE_NUEVO_ID"
+  | "ESTADO_PETICION_ID"
+  | "ESTADO_PETICION_CODIGO"
+  | "ESTADO_PETICION_ANTERIOR_ID"
+  | "ESTADO_PETICION_NUEVO_ID"
+  | "ESTADO_PETICION_ANTERIOR_CODIGO"
+  | "ESTADO_PETICION_NUEVO_CODIGO";
 
 export type WorkflowConditionOperator =
   | "EQUALS"
@@ -1328,6 +1351,7 @@ export const WORKFLOW_TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
   CAMBIO_TIPO: "Cambio de tipo",
   CAMBIO_MODULO: "Cambio de modulo",
   CAMBIO_RELEASE: "Cambio de release/hotfix",
+  CAMBIO_ESTADO_PETICION: "Cambio de estado peticion",
 };
 
 export const CONDITION_FIELD_LABELS: Record<WorkflowConditionField, string> = {
@@ -1361,6 +1385,12 @@ export const CONDITION_FIELD_LABELS: Record<WorkflowConditionField, string> = {
   MODULO_NUEVO_ID: "Modulo nuevo",
   RELEASE_ANTERIOR_ID: "Release anterior",
   RELEASE_NUEVO_ID: "Release nuevo",
+  ESTADO_PETICION_ID: "Estado peticion",
+  ESTADO_PETICION_CODIGO: "Codigo estado peticion",
+  ESTADO_PETICION_ANTERIOR_ID: "Estado peticion anterior",
+  ESTADO_PETICION_NUEVO_ID: "Estado peticion nuevo",
+  ESTADO_PETICION_ANTERIOR_CODIGO: "Codigo estado peticion anterior",
+  ESTADO_PETICION_NUEVO_CODIGO: "Codigo estado peticion nuevo",
 };
 
 export const CONDITION_OPERATOR_LABELS: Record<WorkflowConditionOperator, string> = {

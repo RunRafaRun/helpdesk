@@ -170,6 +170,7 @@ export class TareasService {
         modulo: true,
         release: true,
         hotfix: { include: { release: true } },
+        estadoPeticion: true,
       },
     });
     if (!tarea) throw new NotFoundException("Tarea no encontrada");
@@ -450,6 +451,21 @@ export class TareasService {
       });
     }
 
+    // Handle estado peticion change (secondary status for development workflow)
+    if (dto.estadoPeticionId !== undefined && dto.estadoPeticionId !== tarea.estadoPeticionId) {
+      const nuevoEstadoPeticion = dto.estadoPeticionId
+        ? await this.prisma.estadoPeticion.findUnique({ where: { id: dto.estadoPeticionId } })
+        : null;
+      if (dto.estadoPeticionId && !nuevoEstadoPeticion) throw new NotFoundException(`Estado petición no encontrado: ${dto.estadoPeticionId}`);
+      
+      changes.push({
+        field: "estadoPeticion",
+        oldValue: tarea.estadoPeticion?.codigo ?? null,
+        newValue: nuevoEstadoPeticion?.codigo ?? null,
+        eventoTipo: EventoTipo.CAMBIO_ESTADO_PETICION,
+      });
+    }
+
     const updateData: Prisma.TareaUpdateInput = {};
     if (dto.titulo) updateData.titulo = dto.titulo;
     if (dto.estadoId) updateData.estado = { connect: { id: dto.estadoId } };
@@ -463,6 +479,9 @@ export class TareasService {
     }
     if (dto.hotfixId !== undefined) {
       updateData.hotfix = dto.hotfixId ? { connect: { id: dto.hotfixId } } : { disconnect: true };
+    }
+    if (dto.estadoPeticionId !== undefined) {
+      updateData.estadoPeticion = dto.estadoPeticionId ? { connect: { id: dto.estadoPeticionId } } : { disconnect: true };
     }
     if (dto.reproducido !== undefined) updateData.reproducido = dto.reproducido;
 
@@ -504,6 +523,12 @@ export class TareasService {
       } else if (change.eventoTipo === EventoTipo.CAMBIO_RELEASE_HOTFIX) {
         changeContext.releaseAnteriorId = tarea.releaseId ?? undefined;
         changeContext.releaseNuevoId = dto.releaseId ?? undefined;
+      } else if (change.eventoTipo === EventoTipo.CAMBIO_ESTADO_PETICION) {
+        changeContext.estadoPeticionAnteriorId = tarea.estadoPeticionId ?? undefined;
+        changeContext.estadoPeticionNuevoId = dto.estadoPeticionId ?? undefined;
+        // Also pass the codigos for easier workflow condition matching
+        changeContext.estadoPeticionAnteriorCodigo = change.oldValue ?? undefined;
+        changeContext.estadoPeticionNuevoCodigo = change.newValue ?? undefined;
       }
 
       await this.notificacionTareaService.queueNotification({

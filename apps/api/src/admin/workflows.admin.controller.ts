@@ -476,6 +476,7 @@ export class WorkflowsAdminController {
       CAMBIO_TIPO: "Cambio de tipo",
       CAMBIO_MODULO: "Cambio de modulo",
       CAMBIO_RELEASE: "Cambio de release/hotfix",
+      CAMBIO_ESTADO_PETICION: "Cambio de estado peticion",
     };
     return labels[trigger] || trigger;
   }

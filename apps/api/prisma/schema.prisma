@@ -459,6 +459,7 @@ enum EventoTipo {
   CAMBIO_TIPO
   CAMBIO_MODULO
   CAMBIO_RELEASE_HOTFIX
+  CAMBIO_ESTADO_PETICION
   SISTEMA
 }
 
@@ -626,6 +627,7 @@ enum WorkflowTrigger {
   CAMBIO_TIPO            // Type changed
   CAMBIO_MODULO          // Module changed
   CAMBIO_RELEASE         // Release/hotfix changed
+  CAMBIO_ESTADO_PETICION // Estado Peticion changed
 }
 
 // Condition field types - WHAT to compare
@@ -664,6 +666,13 @@ enum WorkflowConditionField {
   // For CAMBIO_RELEASE events
   RELEASE_ANTERIOR_ID    // Previous release
   RELEASE_NUEVO_ID       // New release
+  // For CAMBIO_ESTADO_PETICION events
+  ESTADO_PETICION_ID           // Current estado peticion
+  ESTADO_PETICION_CODIGO       // Estado peticion code
+  ESTADO_PETICION_ANTERIOR_ID  // Previous estado peticion
+  ESTADO_PETICION_NUEVO_ID     // New estado peticion
+  ESTADO_PETICION_ANTERIOR_CODIGO  // Previous estado peticion code
+  ESTADO_PETICION_NUEVO_CODIGO     // New estado peticion code
 }
 
 // Comparison operators

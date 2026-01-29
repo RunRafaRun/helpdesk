@@ -390,12 +390,16 @@ The application includes a powerful if-then rules engine for automated notificat
 | CAMBIO_TIPO | Type changed |
 | CAMBIO_MODULO | Module changed |
 | CAMBIO_RELEASE | Release/hotfix changed |
+| CAMBIO_ESTADO_PETICION | Estado Peticion (secondary status) changed |
 
 **Condition Fields (WorkflowConditionField enum)**:
 - Task attributes: CLIENTE_ID, ESTADO_ID, TIPO_ID, PRIORIDAD_ID, MODULO_ID, RELEASE_ID, HOTFIX_ID
 - Code-based: CLIENTE_CODIGO, ESTADO_CODIGO, TIPO_CODIGO, PRIORIDAD_CODIGO, etc.
 - Assignments: ASIGNADO_A_ID, CREADO_POR_AGENTE_ID, CREADO_POR_CLIENTE_ID
-- Change tracking: ESTADO_ANTERIOR_ID, ESTADO_NUEVO_ID, PRIORIDAD_ANTERIOR_ID, PRIORIDAD_NUEVA_ID
+- Estado change tracking: ESTADO_ANTERIOR_ID, ESTADO_NUEVO_ID
+- Priority change tracking: PRIORIDAD_ANTERIOR_ID, PRIORIDAD_NUEVA_ID
+- Estado Peticion: ESTADO_PETICION_ID, ESTADO_PETICION_CODIGO
+- Estado Peticion change tracking: ESTADO_PETICION_ANTERIOR_ID, ESTADO_PETICION_NUEVO_ID, ESTADO_PETICION_ANTERIOR_CODIGO, ESTADO_PETICION_NUEVO_CODIGO
 
 **Condition Operators (WorkflowConditionOperator enum)**:
 EQUALS, NOT_EQUALS, IN, NOT_IN, IS_NULL, IS_NOT_NULL, CONTAINS, STARTS_WITH

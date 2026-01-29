@@ -419,6 +419,7 @@ export class NotificacionTareaService {
       [EventoTipo.CAMBIO_TIPO]: "[Ticket #{{tarea.numero}}] Cambio de tipo",
       [EventoTipo.CAMBIO_MODULO]: "[Ticket #{{tarea.numero}}] Cambio de modulo",
       [EventoTipo.CAMBIO_RELEASE_HOTFIX]: "[Ticket #{{tarea.numero}}] Cambio de release/hotfix",
+      [EventoTipo.CAMBIO_ESTADO_PETICION]: "[Ticket #{{tarea.numero}}] Cambio de estado peticion",
       [EventoTipo.SISTEMA]: "[Ticket #{{tarea.numero}}] Notificacion del sistema",
     };
     return subjects[eventoTipo] || "[Ticket #{{tarea.numero}}] Actualizacion";
@@ -462,6 +463,14 @@ export class NotificacionTareaService {
       case EventoTipo.CAMBIO_ESTADO:
         return `
           <p>El estado de la tarea <strong>#${context.tarea?.numero}</strong> ha cambiado:</p>
+          <p><strong>${context.tarea?.titulo}</strong></p>
+          <p>${context.evento?.contenido || ""}</p>
+          <p>${tareaLink}</p>
+        `;
+
+      case EventoTipo.CAMBIO_ESTADO_PETICION:
+        return `
+          <p>El estado de peticion de la tarea <strong>#${context.tarea?.numero}</strong> ha cambiado:</p>
           <p><strong>${context.tarea?.titulo}</strong></p>
           <p>${context.evento?.contenido || ""}</p>
           <p>${tareaLink}</p>

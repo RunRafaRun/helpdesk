@@ -175,6 +175,11 @@ export class ActualizarTareaDto {
   @IsString()
   hotfixId?: string;
 
+  @ApiPropertyOptional({ description: "ID del estado de petición (secondary status)" })
+  @IsOptional()
+  @IsString()
+  estadoPeticionId?: string;
+
   @ApiPropertyOptional({ description: "Indica si se ha reproducido el problema" })
   @IsOptional()
   @IsBoolean()

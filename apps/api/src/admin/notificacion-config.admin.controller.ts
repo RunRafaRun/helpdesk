@@ -164,6 +164,7 @@ export class NotificacionConfigAdminController {
       [EventoTipo.CAMBIO_TIPO]: "Cambio de tipo",
       [EventoTipo.CAMBIO_MODULO]: "Cambio de modulo",
       [EventoTipo.CAMBIO_RELEASE_HOTFIX]: "Cambio de release/hotfix",
+      [EventoTipo.CAMBIO_ESTADO_PETICION]: "Cambio de estado peticion",
       [EventoTipo.SISTEMA]: "Evento del sistema",
     };
     return descriptions[eventoTipo] || eventoTipo;

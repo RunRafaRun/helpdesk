@@ -317,6 +317,7 @@ export const WORKFLOW_TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
   CAMBIO_TIPO: "Cambio de tipo",
   CAMBIO_MODULO: "Cambio de modulo",
   CAMBIO_RELEASE: "Cambio de release/hotfix",
+  CAMBIO_ESTADO_PETICION: "Cambio de estado peticion",
 };
 
 export const CONDITION_FIELD_LABELS: Record<WorkflowConditionField, string> = {
@@ -350,6 +351,12 @@ export const CONDITION_FIELD_LABELS: Record<WorkflowConditionField, string> = {
   MODULO_NUEVO_ID: "Modulo nuevo",
   RELEASE_ANTERIOR_ID: "Release anterior",
   RELEASE_NUEVO_ID: "Release nuevo",
+  ESTADO_PETICION_ID: "Estado peticion",
+  ESTADO_PETICION_CODIGO: "Codigo estado peticion",
+  ESTADO_PETICION_ANTERIOR_ID: "Estado peticion anterior",
+  ESTADO_PETICION_NUEVO_ID: "Estado peticion nuevo",
+  ESTADO_PETICION_ANTERIOR_CODIGO: "Codigo estado peticion anterior",
+  ESTADO_PETICION_NUEVO_CODIGO: "Codigo estado peticion nuevo",
 };
 
 export const CONDITION_OPERATOR_LABELS: Record<WorkflowConditionOperator, string> = {

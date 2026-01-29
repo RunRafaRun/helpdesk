@@ -21,6 +21,7 @@ import {
   listTiposTarea,
   listModulosLookup,
   listReleasesLookup,
+  listEstadosPeticionPermitidos,
   ModuloLookup,
   getCliente,
   listContactos,
@@ -39,6 +40,7 @@ import {
   TipoTarea,
   Release,
   Cliente,
+  EstadoPeticion,
 } from "../lib/api";
 
 
@@ -925,6 +927,7 @@ export default function TareaFicha() {
   const [tipos, setTipos] = React.useState<TipoTarea[]>([]);
   const [modulos, setModulos] = React.useState<ModuloLookup[]>([]);
   const [releases, setReleases] = React.useState<Release[]>([]);
+  const [estadosPeticion, setEstadosPeticion] = React.useState<EstadoPeticion[]>([]);
 
   // Edit mode
   const [editing, setEditing] = React.useState(false);
@@ -970,6 +973,21 @@ export default function TareaFicha() {
     }
   }
 
+  // Load permitted Estados Petición based on tipo and current estado
+  async function loadEstadosPeticionPermitidos(tipoTareaId: string, estadoPeticionId?: string) {
+    try {
+      const data = await listEstadosPeticionPermitidos({
+        tipoTareaId,
+        estadoActualId: estadoPeticionId,
+        actorTipo: "AGENTE",
+      });
+      setEstadosPeticion(data);
+    } catch (e) {
+      console.error("Error loading estados petición permitidos:", e);
+      setEstadosPeticion([]);
+    }
+  }
+
   async function loadTarea() {
     if (!id) return;
     setLoading(true);
@@ -990,6 +1008,7 @@ export default function TareaFicha() {
         releaseId: tareaData.releaseId || "",
         hotfixId: tareaData.hotfixId || "",
         reproducido: tareaData.reproducido,
+        estadoPeticionId: tareaData.estadoPeticionId || "",
       });
       // Auto-select first comment (oldest by date)
       const articleTypes = ["MENSAJE_CLIENTE", "RESPUESTA_AGENTE", "NOTA_INTERNA"];
@@ -1035,6 +1054,26 @@ export default function TareaFicha() {
     loadEstadosPermitidos();
   }, [tarea?.tipoId, tarea?.estadoId, estados]);
 
+  // Load allowed Estados Petición when task is loaded or tipoId changes in edit mode
+  React.useEffect(() => {
+    const tipoId = editing ? editForm.tipoId : tarea?.tipoId;
+    const estadoPeticionId = editing ? editForm.estadoPeticionId : tarea?.estadoPeticionId;
+    
+    if (!tipoId) {
+      setEstadosPeticion([]);
+      return;
+    }
+    
+    // Check if this tipo uses Estado Petición
+    const tipo = tipos.find(t => t.id === tipoId);
+    if (tipo?.tablaRelacionada !== "EstadoPeticion") {
+      setEstadosPeticion([]);
+      return;
+    }
+    
+    loadEstadosPeticionPermitidos(tipoId, estadoPeticionId || undefined);
+  }, [tarea?.tipoId, tarea?.estadoPeticionId, editForm.tipoId, editForm.estadoPeticionId, editing, tipos]);
+
   async function handleSave() {
     if (!id) return;
     setSaving(true);
@@ -1048,6 +1087,7 @@ export default function TareaFicha() {
         releaseId: editForm.releaseId || undefined,
         hotfixId: editForm.hotfixId || undefined,
         reproducido: editForm.reproducido,
+        estadoPeticionId: editForm.estadoPeticionId || undefined,
       });
       setTarea(updated);
       setEditing(false);
@@ -1768,6 +1808,16 @@ export default function TareaFicha() {
                     <span style={{ color: "var(--muted)" }}>Estado:</span>
                     <span><Badge estado={tarea.estado} /></span>
                     
+                    {/* Estado Petición - only shown when TipoTarea has tablaRelacionada = "EstadoPeticion" */}
+                    {tarea.tipo?.tablaRelacionada === "EstadoPeticion" && (
+                      <>
+                        <span style={{ color: "var(--muted)" }}>Est. Petición:</span>
+                        <span style={{ fontWeight: 500, color: tarea.estadoPeticion ? "var(--accent)" : "var(--muted)" }}>
+                          {tarea.estadoPeticion?.codigo ?? "-"}
+                        </span>
+                      </>
+                    )}
+                    
                     <span style={{ color: "var(--muted)" }}>Prioridad:</span>
                     <span><Badge prioridad={tarea.prioridad} /></span>
                     
@@ -1913,6 +1963,23 @@ export default function TareaFicha() {
                           ))}
                         </select>
                       </div>
+                      {/* Estado Petición - only shown when TipoTarea has tablaRelacionada = "EstadoPeticion" */}
+                      {tipos.find(t => t.id === editForm.tipoId)?.tablaRelacionada === "EstadoPeticion" && (
+                        <div className="field" style={{ marginBottom: 0 }}>
+                          <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Estado Petición</div>
+                          <select
+                            className="input"
+                            style={{ padding: "4px 6px", fontSize: 11 }}
+                            value={editForm.estadoPeticionId || ""}
+                            onChange={(e) => setEditForm({ ...editForm, estadoPeticionId: e.target.value })}
+                          >
+                            <option value="">Sin estado petición</option>
+                            {estadosPeticion.map((ep) => (
+                              <option key={ep.id} value={ep.id}>{ep.codigo}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div className="field" style={{ marginBottom: 0 }}>
                         <div className="label" style={{ fontSize: 10, marginBottom: 2 }}>Módulo</div>
                         <select

@@ -33,6 +33,10 @@ export interface WorkflowContext {
     moduloNuevoId?: string | null;
     releaseAnteriorId?: string | null;
     releaseNuevoId?: string | null;
+    estadoPeticionAnteriorId?: string | null;
+    estadoPeticionNuevoId?: string | null;
+    estadoPeticionAnteriorCodigo?: string | null;
+    estadoPeticionNuevoCodigo?: string | null;
   };
 }
 
@@ -93,6 +97,7 @@ export class WorkflowEvaluationService {
       [EventoTipo.CAMBIO_TIPO]: WorkflowTrigger.CAMBIO_TIPO,
       [EventoTipo.CAMBIO_MODULO]: WorkflowTrigger.CAMBIO_MODULO,
       [EventoTipo.CAMBIO_RELEASE_HOTFIX]: WorkflowTrigger.CAMBIO_RELEASE,
+      [EventoTipo.CAMBIO_ESTADO_PETICION]: WorkflowTrigger.CAMBIO_ESTADO_PETICION,
       [EventoTipo.SISTEMA]: WorkflowTrigger.TAREA_MODIFICADA, // Default for system events
     };
     return mapping[eventoTipo] || null;
@@ -354,6 +359,19 @@ export class WorkflowEvaluationService {
         return changes?.releaseAnteriorId;
       case WorkflowConditionField.RELEASE_NUEVO_ID:
         return changes?.releaseNuevoId;
+      // Estado Peticion fields
+      case WorkflowConditionField.ESTADO_PETICION_ID:
+        return tarea.estadoPeticionId ?? null;
+      case WorkflowConditionField.ESTADO_PETICION_CODIGO:
+        return tarea.estadoPeticion?.codigo ?? null;
+      case WorkflowConditionField.ESTADO_PETICION_ANTERIOR_ID:
+        return changes?.estadoPeticionAnteriorId ?? null;
+      case WorkflowConditionField.ESTADO_PETICION_NUEVO_ID:
+        return changes?.estadoPeticionNuevoId ?? null;
+      case WorkflowConditionField.ESTADO_PETICION_ANTERIOR_CODIGO:
+        return changes?.estadoPeticionAnteriorCodigo ?? null;
+      case WorkflowConditionField.ESTADO_PETICION_NUEVO_CODIGO:
+        return changes?.estadoPeticionNuevoCodigo ?? null;
       default:
         return undefined;
     }

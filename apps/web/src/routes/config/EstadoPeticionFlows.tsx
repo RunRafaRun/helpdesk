@@ -190,8 +190,7 @@ export default function EstadoPeticionFlows() {
     setSuccess(null);
 
     try {
-      const data = {
-        tipoTareaId: editingTipoId,
+      const baseData = {
         estadoInicialId: estadoInicialId || undefined,
         estadosPermitidos: estadosPermitidos.map((ep) => ({
           estadoId: ep.estadoId,
@@ -210,9 +209,11 @@ export default function EstadoPeticionFlows() {
       };
 
       if (editingFlow) {
-        await updateEstadoPeticionFlow(editingFlow.id, data);
+        // Update: don't send tipoTareaId
+        await updateEstadoPeticionFlow(editingFlow.id, baseData);
       } else {
-        await createEstadoPeticionFlow(data);
+        // Create: include tipoTareaId
+        await createEstadoPeticionFlow({ ...baseData, tipoTareaId: editingTipoId });
       }
 
       setSuccess("Flujo guardado correctamente");

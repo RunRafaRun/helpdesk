@@ -577,6 +577,100 @@ export class LookupAdminController {
   }
 
   /**
+   * Get allowed Estado Petición transitions based on flow configuration.
+   * Similar to listEstadosPermitidos but for Estado Petición.
+   * @param tipoTareaId - Task type ID (required)
+   * @param estadoActualId - Current Estado Petición ID (optional, for new tasks returns initial or all allowed)
+   * @param actorTipo - Actor type: AGENTE or CLIENTE
+   */
+  @Get("estados-peticion-permitidos")
+  async listEstadosPeticionPermitidos(
+    @Query("tipoTareaId") tipoTareaId: string,
+    @Query("estadoActualId") estadoActualId?: string,
+    @Query("actorTipo") actorTipo?: string
+  ) {
+    if (!tipoTareaId) {
+      throw new BadRequestException("tipoTareaId es requerido");
+    }
+
+    const isCliente = actorTipo === "CLIENTE";
+
+    // Get the Estado Petición flow for this task type
+    const flow = await this.prisma.tipoTareaEstadoPeticionFlow.findUnique({
+      where: { tipoTareaId },
+      include: {
+        estadosPermitidos: {
+          include: {
+            estado: true,
+          },
+          orderBy: { orden: "asc" },
+        },
+        transiciones: {
+          include: {
+            estadoDestino: true,
+          },
+          orderBy: { orden: "asc" },
+        },
+        estadoInicial: true,
+      },
+    });
+
+    // If no flow configured, return all active estados petición
+    if (!flow || !flow.activo) {
+      return this.prisma.estadoPeticion.findMany({
+        where: { activo: true },
+        orderBy: { orden: "asc" },
+      });
+    }
+
+    // If no current status (new task), return the initial status or allowed statuses
+    if (!estadoActualId) {
+      if (flow.estadoInicial) {
+        return [flow.estadoInicial];
+      }
+      // Return allowed statuses for new tasks
+      const allowedEstados = flow.estadosPermitidos
+        .filter((ep) => !isCliente || ep.visibleCliente)
+        .map((ep) => ep.estado);
+      return allowedEstados;
+    }
+
+    // Get allowed transitions from current status
+    const allowedTransitions = flow.transiciones.filter((t) => {
+      if (t.estadoOrigenId !== estadoActualId) return false;
+      if (isCliente && !t.permiteCliente) return false;
+      if (!isCliente && !t.permiteAgente) return false;
+      return true;
+    });
+
+    // Get the allowed status IDs from transitions
+    const allowedStatusIds = new Set(allowedTransitions.map((t) => t.estadoDestinoId));
+
+    // Also include current status if it's in the allowed statuses list
+    const currentStatusInFlow = flow.estadosPermitidos.find((ep) => ep.estadoId === estadoActualId);
+    if (currentStatusInFlow) {
+      allowedStatusIds.add(estadoActualId);
+    }
+
+    // Filter by visibility for clients
+    const visibleEstadoIds = new Set(
+      flow.estadosPermitidos
+        .filter((ep) => !isCliente || ep.visibleCliente)
+        .map((ep) => ep.estadoId)
+    );
+
+    // Return estados that are both allowed AND visible
+    const finalStatusIds = [...allowedStatusIds].filter((id) => visibleEstadoIds.has(id)) as string[];
+
+    const estados = await this.prisma.estadoPeticion.findMany({
+      where: { id: { in: finalStatusIds } },
+      orderBy: { orden: "asc" },
+    });
+
+    return estados;
+  }
+
+  /**
    * Get the initial status for a task type based on flow configuration.
    * Falls back to default status or first status if no flow is configured.
    */
