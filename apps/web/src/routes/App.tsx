@@ -8,6 +8,7 @@ import Dashboard from "./Dashboard";
 import Tareas from "./Tareas";
 import TareaFicha from "./TareaFicha";
 import NuevaTarea from "./NuevaTarea";
+import BusquedaResultados from "./BusquedaResultados";
 import Agentes from "./config/Agentes";
 import Clientes from "./config/Clientes";
 import ClienteEdit from "./config/ClienteEdit";
@@ -17,6 +18,7 @@ import Roles from "./config/Roles";
 import TiposTarea from "./config/TiposTarea";
 import EstadosTarea from "./config/EstadosTarea";
 import PrioridadesTarea from "./config/PrioridadesTarea";
+import EstadoFlows from "./config/EstadoFlows";
 import Plantillas from "./config/Plantillas";
 import Configuracion from "./config/Configuracion";
 import General from "./config/General";
@@ -40,6 +42,7 @@ export default function App() {
         <Route path="tareas" element={<Tareas />} />
         <Route path="tareas/nueva" element={<NuevaTarea />} />
         <Route path="tareas/:id" element={<TareaFicha />} />
+        <Route path="busqueda" element={<BusquedaResultados />} />
         <Route path="config/general" element={<General />} />
         <Route path="config/agentes" element={<Agentes />} />
         <Route path="config/clientes" element={<Clientes />} />
@@ -50,6 +53,7 @@ export default function App() {
         <Route path="config/tipos-tarea" element={<TiposTarea />} />
         <Route path="config/estados-tarea" element={<EstadosTarea />} />
         <Route path="config/prioridades-tarea" element={<PrioridadesTarea />} />
+        <Route path="config/estado-flows" element={<EstadoFlows />} />
         <Route path="config/plantillas" element={<Plantillas />} />
         <Route path="config/notificaciones" element={<Configuracion />} />
         <Route path="config/log-notificaciones" element={<LogNotificaciones />} />

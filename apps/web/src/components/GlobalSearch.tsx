@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { LuSearch, LuX, LuLoader } from "react-icons/lu";
+import { LuSearch, LuX, LuLoader, LuExternalLink } from "react-icons/lu";
 import { buscarTextoEnTareas, buscarTareaPorNumero, buscarTareaPorPatron, TextSearchResult, PatronSearchResult } from "../lib/api";
 
 interface GlobalSearchProps {
@@ -229,6 +229,14 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
     navigate(`/tareas/${tareaId}`);
   };
 
+  // Open full search results page
+  const handleOpenSearchPage = () => {
+    setTextDropdownOpen(false);
+    setTextQuery("");
+    setTextResults(null);
+    navigate(`/busqueda?q=${encodeURIComponent(textQuery)}`);
+  };
+
   // Highlight matching text
   const highlightMatch = (text: string, query: string) => {
     if (!query.trim() || !text) return text;
@@ -318,7 +326,14 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
             ) : (
               <>
                 <div className="search-results-header">
-                  {textResults.total} resultado{textResults.total !== 1 ? "s" : ""}
+                  <span>{textResults.total} resultado{textResults.total !== 1 ? "s" : ""}</span>
+                  <button
+                    onClick={handleOpenSearchPage}
+                    className="search-expand-btn"
+                    title="Abrir pagina de resultados"
+                  >
+                    <LuExternalLink size={14} />
+                  </button>
                 </div>
                 <div className="search-results-list">
                   {textResults.items.map((result) => (
