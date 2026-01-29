@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, Req } from "@nestjs/common";
 import { ApiQuery, ApiTags, ApiBearerAuth } from "@nestjs/swagger";
-import { CrearComentarioDto, CrearTareaDto, ListarTareasDto, ActualizarTareaDto, AsignarTareaDto, ActualizarComentarioDto } from "./dto";
+import { CrearComentarioDto, CrearTareaDto, ListarTareasDto, ActualizarTareaDto, AsignarTareaDto, ActualizarComentarioDto, BuscarTextoDto, BuscarPorNumeroDto } from "./dto";
 import { TareasService } from "./tareas.service";
 import { JwtAuthGuard } from "../auth/guards";
 
@@ -14,6 +14,16 @@ export class TareasController {
   @Get("dashboard")
   dashboard() {
     return this.service.getDashboardStats();
+  }
+
+  @Get("buscar/texto")
+  buscarTexto(@Query() dto: BuscarTextoDto) {
+    return this.service.buscarTextoEnComentarios(dto.texto, dto.limit);
+  }
+
+  @Get("buscar/numero/:numero")
+  buscarPorNumero(@Param("numero") numero: string) {
+    return this.service.buscarPorNumero(numero);
   }
 
   @Get()

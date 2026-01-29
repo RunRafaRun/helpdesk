@@ -708,6 +708,40 @@ export async function cerrarTarea(id: string) {
   return request<Tarea>(`/tareas/${id}/cerrar`, { method: "PUT" });
 }
 
+// Global Search Types and Functions
+export type TextSearchResult = {
+  items: Array<{
+    tarea: {
+      id: string;
+      numero: string;
+      titulo: string;
+      cliente: { codigo: string; descripcion?: string | null };
+      estado: { codigo: string } | null;
+      prioridad: { codigo: string; color?: string | null };
+      createdAt: string;
+    };
+    comentarios: Array<{
+      id: string;
+      tipo: string;
+      cuerpo: string | null;
+      createdAt: string;
+      creadoPorAgente?: { nombre: string } | null;
+    }>;
+  }>;
+  total: number;
+};
+
+export async function buscarTextoEnTareas(texto: string, limit = 20): Promise<TextSearchResult> {
+  const params = new URLSearchParams();
+  params.set("texto", texto);
+  if (limit) params.set("limit", String(limit));
+  return request<TextSearchResult>(`/tareas/buscar/texto?${params.toString()}`);
+}
+
+export async function buscarTareaPorNumero(numero: string): Promise<Tarea | null> {
+  return request<Tarea | null>(`/tareas/buscar/numero/${encodeURIComponent(numero)}`);
+}
+
 export async function addComentarioTarea(id: string, input: {
   tipo: "MENSAJE_CLIENTE" | "RESPUESTA_AGENTE" | "NOTA_INTERNA";
   cuerpo: string;
@@ -1114,7 +1148,13 @@ export type WorkflowConditionField =
   | "ESTADO_ANTERIOR_ID"
   | "ESTADO_NUEVO_ID"
   | "PRIORIDAD_ANTERIOR_ID"
-  | "PRIORIDAD_NUEVA_ID";
+  | "PRIORIDAD_NUEVA_ID"
+  | "TIPO_ANTERIOR_ID"
+  | "TIPO_NUEVO_ID"
+  | "MODULO_ANTERIOR_ID"
+  | "MODULO_NUEVO_ID"
+  | "RELEASE_ANTERIOR_ID"
+  | "RELEASE_NUEVO_ID";
 
 export type WorkflowConditionOperator =
   | "EQUALS"
@@ -1153,6 +1193,21 @@ export type WorkflowRecipient = {
   isCc?: boolean;
 };
 
+export type WorkflowActionType =
+  | "CAMBIAR_ESTADO"
+  | "CAMBIAR_PRIORIDAD"
+  | "CAMBIAR_TIPO"
+  | "ASIGNAR_AGENTE"
+  | "CAMBIAR_MODULO"
+  | "CAMBIAR_RELEASE";
+
+export type WorkflowAction = {
+  id?: string;
+  actionType: WorkflowActionType;
+  value?: string | null;
+  orden?: number;
+};
+
 export type WorkflowListItem = {
   id: string;
   nombre: string;
@@ -1163,6 +1218,7 @@ export type WorkflowListItem = {
   stopOnMatch: boolean;
   conditionsCount: number;
   recipientsCount: number;
+  actionsCount: number;
   plantilla?: { id: string; codigo: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -1183,6 +1239,7 @@ export type WorkflowDetail = {
   plantilla?: { id: string; codigo: string; descripcion?: string | null } | null;
   conditions: WorkflowCondition[];
   recipients: WorkflowRecipient[];
+  actions: WorkflowAction[];
   createdAt: string;
   updatedAt: string;
 };
@@ -1200,6 +1257,7 @@ export type CreateWorkflowInput = {
   ccJefeProyecto2?: boolean;
   conditions?: WorkflowCondition[];
   recipients?: WorkflowRecipient[];
+  actions?: WorkflowAction[];
 };
 
 export type UpdateWorkflowInput = Partial<CreateWorkflowInput>;
@@ -1245,6 +1303,12 @@ export const CONDITION_FIELD_LABELS: Record<WorkflowConditionField, string> = {
   ESTADO_NUEVO_ID: "Estado nuevo",
   PRIORIDAD_ANTERIOR_ID: "Prioridad anterior",
   PRIORIDAD_NUEVA_ID: "Prioridad nueva",
+  TIPO_ANTERIOR_ID: "Tipo anterior",
+  TIPO_NUEVO_ID: "Tipo nuevo",
+  MODULO_ANTERIOR_ID: "Modulo anterior",
+  MODULO_NUEVO_ID: "Modulo nuevo",
+  RELEASE_ANTERIOR_ID: "Release anterior",
+  RELEASE_NUEVO_ID: "Release nuevo",
 };
 
 export const CONDITION_OPERATOR_LABELS: Record<WorkflowConditionOperator, string> = {
@@ -1269,6 +1333,15 @@ export const RECIPIENT_TYPE_LABELS: Record<WorkflowRecipientType, string> = {
   AGENTES_ESPECIFICOS: "Agentes especificos",
   ROLES_ESPECIFICOS: "Roles especificos",
   EMAILS_MANUALES: "Emails manuales",
+};
+
+export const ACTION_TYPE_LABELS: Record<WorkflowActionType, string> = {
+  CAMBIAR_ESTADO: "Cambiar estado",
+  CAMBIAR_PRIORIDAD: "Cambiar prioridad",
+  CAMBIAR_TIPO: "Cambiar tipo",
+  ASIGNAR_AGENTE: "Asignar agente",
+  CAMBIAR_MODULO: "Cambiar modulo",
+  CAMBIAR_RELEASE: "Cambiar release",
 };
 
 export async function listWorkflows(params?: {
@@ -1312,4 +1385,131 @@ export async function toggleWorkflow(id: string) {
 
 export async function duplicateWorkflow(id: string) {
   return request<WorkflowDetail>(`/admin/workflows/${id}/duplicate`, { method: "POST" });
+}
+
+// ==================== ESTADO FLOWS (Task State Machine) ====================
+
+export type EstadoPermitido = {
+  id?: string;
+  estadoId: string;
+  orden?: number;
+  visibleCliente?: boolean;
+};
+
+export type Transicion = {
+  id?: string;
+  estadoOrigenId: string;
+  estadoDestinoId: string;
+  permiteAgente?: boolean;
+  permiteCliente?: boolean;
+  notificar?: boolean;
+  orden?: number;
+};
+
+export type EstadoFlowListItem = {
+  id: string;
+  tipoTareaId: string;
+  tipoTarea: { id: string; codigo: string; descripcion: string | null };
+  estadoInicial: { id: string; codigo: string } | null;
+  estadosCount: number;
+  transicionesCount: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EstadoFlowDetail = {
+  id: string;
+  tipoTareaId: string;
+  tipoTarea: { id: string; codigo: string; descripcion: string | null };
+  estadoInicialId: string | null;
+  estadoInicial: { id: string; codigo: string; descripcion: string | null } | null;
+  estadosPermitidos: {
+    id: string;
+    estadoId: string;
+    estado: { id: string; codigo: string; descripcion: string | null };
+    orden: number;
+    visibleCliente: boolean;
+  }[];
+  transiciones: {
+    id: string;
+    estadoOrigenId: string;
+    estadoOrigen: { id: string; codigo: string };
+    estadoDestinoId: string;
+    estadoDestino: { id: string; codigo: string };
+    permiteAgente: boolean;
+    permiteCliente: boolean;
+    notificar: boolean;
+    orden: number;
+  }[];
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateEstadoFlowInput = {
+  tipoTareaId: string;
+  estadoInicialId?: string;
+  estadosPermitidos: EstadoPermitido[];
+  transiciones: Transicion[];
+  activo?: boolean;
+};
+
+export type UpdateEstadoFlowInput = Partial<Omit<CreateEstadoFlowInput, "tipoTareaId">>;
+
+export async function listEstadoFlows() {
+  return request<EstadoFlowListItem[]>("/admin/estado-flows");
+}
+
+export async function getEstadoFlow(id: string) {
+  return request<EstadoFlowDetail>(`/admin/estado-flows/${id}`);
+}
+
+export async function getEstadoFlowByTipoTarea(tipoTareaId: string) {
+  return request<EstadoFlowDetail | null>(`/admin/estado-flows/by-tipo/${tipoTareaId}`);
+}
+
+export async function createEstadoFlow(input: CreateEstadoFlowInput) {
+  return request<EstadoFlowDetail>("/admin/estado-flows", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateEstadoFlow(id: string, input: UpdateEstadoFlowInput) {
+  return request<EstadoFlowDetail>(`/admin/estado-flows/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteEstadoFlow(tipoTareaId: string) {
+  return request<{ success: boolean }>(`/admin/estado-flows/${tipoTareaId}`, { method: "DELETE" });
+}
+
+export async function toggleEstadoFlow(id: string) {
+  return request<{ activo: boolean }>(`/admin/estado-flows/${id}/toggle`, { method: "POST" });
+}
+
+/**
+ * Get allowed next statuses based on task type, current status, and actor type.
+ * Used for filtering status dropdowns in task edit forms.
+ */
+export async function listEstadosPermitidos(
+  tipoTareaId: string,
+  estadoActualId?: string | null,
+  actorTipo: "AGENTE" | "CLIENTE" = "AGENTE"
+) {
+  const params = new URLSearchParams();
+  params.set("tipoTareaId", tipoTareaId);
+  if (estadoActualId) params.set("estadoActualId", estadoActualId);
+  params.set("actorTipo", actorTipo);
+  return request<EstadoTarea[]>(`/admin/lookup/estados-permitidos?${params.toString()}`);
+}
+
+/**
+ * Get the initial status for a task type based on flow configuration.
+ */
+export async function getEstadoInicial(tipoTareaId: string) {
+  return request<EstadoTarea>(`/admin/lookup/estado-inicial/${tipoTareaId}`);
 }

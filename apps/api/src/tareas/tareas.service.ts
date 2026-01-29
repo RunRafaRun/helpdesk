@@ -92,10 +92,26 @@ export class TareasService {
       : null;
     if (dto.moduloCodigo && !modulo) throw new NotFoundException(`Módulo no encontrado: ${dto.moduloCodigo}`);
 
-    // Get estado: use provided code, or find default (porDefecto=true), or first by orden
+    // Get estado: use provided code, or flow initial status, or default (porDefecto=true), or first by orden
     let estado = dto.estadoCodigo
       ? await this.prisma.estadoTarea.findUnique({ where: { codigo: dto.estadoCodigo } })
-      : await this.prisma.estadoTarea.findFirst({ where: { porDefecto: true } });
+      : null;
+
+    // If no estado provided, check if there's a flow with an initial estado for this tipo
+    if (!estado && tipo) {
+      const flow = await this.prisma.tipoTareaEstadoFlow.findUnique({
+        where: { tipoTareaId: tipo.id },
+        include: { estadoInicial: true },
+      });
+      if (flow?.activo && flow.estadoInicial) {
+        estado = flow.estadoInicial;
+      }
+    }
+
+    // Fallback to default estado
+    if (!estado) {
+      estado = await this.prisma.estadoTarea.findFirst({ where: { porDefecto: true } });
+    }
     if (!estado) {
       estado = await this.prisma.estadoTarea.findFirst({ orderBy: { orden: "asc" } });
     }
@@ -348,7 +364,7 @@ export class TareasService {
     };
   }
 
-  async actualizar(id: string, dto: ActualizarTareaDto, agenteId: string) {
+  async actualizar(id: string, dto: ActualizarTareaDto, agenteId: string, isCliente = false) {
     const tarea = await this.obtener(id);
 
     if (tarea.closedAt) {
@@ -360,6 +376,10 @@ export class TareasService {
     if (dto.estadoId && dto.estadoId !== tarea.estadoId) {
       const nuevoEstado = await this.prisma.estadoTarea.findUnique({ where: { id: dto.estadoId } });
       if (!nuevoEstado) throw new NotFoundException(`Estado no encontrado: ${dto.estadoId}`);
+
+      // Validate state transition if a flow is configured
+      await this.validateStateTransition(tarea.tipoId, tarea.estadoId, dto.estadoId, isCliente);
+
       changes.push({
         field: "estado",
         oldValue: tarea.estado?.codigo ?? null,
@@ -589,6 +609,150 @@ export class TareasService {
     });
 
     return this.obtener(id);
+  }
+
+  /**
+   * Search for tasks by task number (numero).
+   * Returns the task if found, or null if not found.
+   */
+  async buscarPorNumero(numero: string) {
+    const tarea = await this.prisma.tarea.findFirst({
+      where: { numero },
+      include: {
+        cliente: true,
+        unidadComercial: true,
+        tipo: true,
+        estado: true,
+        prioridad: true,
+        modulo: true,
+        release: true,
+        hotfix: { include: { release: true } },
+      },
+    });
+    return tarea;
+  }
+
+  /**
+   * Search for tasks and comments containing the given text.
+   * Returns a list of matching tasks with their matching comments.
+   */
+  async buscarTextoEnComentarios(texto: string, limit = 20) {
+    if (!texto || texto.trim().length < 2) {
+      return { items: [], total: 0 };
+    }
+
+    const searchText = texto.trim();
+
+    // First, search for matching comments
+    const comentarios = await this.prisma.tareaEvento.findMany({
+      where: {
+        OR: [
+          { cuerpo: { contains: searchText, mode: "insensitive" } },
+          { asunto: { contains: searchText, mode: "insensitive" } },
+        ],
+        tipo: { in: [EventoTipo.MENSAJE_CLIENTE, EventoTipo.RESPUESTA_AGENTE, EventoTipo.NOTA_INTERNA] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit * 3, // Get more to account for grouping by task
+      include: {
+        tarea: {
+          include: {
+            cliente: { select: { codigo: true, descripcion: true } },
+            estado: { select: { codigo: true } },
+            prioridad: { select: { codigo: true, color: true } },
+          },
+        },
+        creadoPorAgente: { select: { nombre: true } },
+      },
+    });
+
+    // Also search for tasks by title
+    const tareasPorTitulo = await this.prisma.tarea.findMany({
+      where: {
+        titulo: { contains: searchText, mode: "insensitive" },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        cliente: { select: { codigo: true, descripcion: true } },
+        estado: { select: { codigo: true } },
+        prioridad: { select: { codigo: true, color: true } },
+      },
+    });
+
+    // Group comments by task and build results
+    const taskMap = new Map<string, {
+      tarea: {
+        id: string;
+        numero: string;
+        titulo: string;
+        cliente: { codigo: string; descripcion?: string | null };
+        estado: { codigo: string } | null;
+        prioridad: { codigo: string; color?: string | null };
+        createdAt: Date;
+      };
+      comentarios: Array<{
+        id: string;
+        tipo: string;
+        cuerpo: string | null;
+        createdAt: Date;
+        creadoPorAgente?: { nombre: string } | null;
+      }>;
+    }>();
+
+    // Add tasks found by title (with empty comments array)
+    for (const tarea of tareasPorTitulo) {
+      if (!taskMap.has(tarea.id)) {
+        taskMap.set(tarea.id, {
+          tarea: {
+            id: tarea.id,
+            numero: tarea.numero,
+            titulo: tarea.titulo,
+            cliente: tarea.cliente,
+            estado: tarea.estado,
+            prioridad: tarea.prioridad,
+            createdAt: tarea.createdAt,
+          },
+          comentarios: [],
+        });
+      }
+    }
+
+    // Add comments and their tasks
+    for (const comentario of comentarios) {
+      const tareaId = comentario.tareaId;
+      if (!taskMap.has(tareaId)) {
+        taskMap.set(tareaId, {
+          tarea: {
+            id: comentario.tarea.id,
+            numero: comentario.tarea.numero,
+            titulo: comentario.tarea.titulo,
+            cliente: comentario.tarea.cliente,
+            estado: comentario.tarea.estado,
+            prioridad: comentario.tarea.prioridad,
+            createdAt: comentario.tarea.createdAt,
+          },
+          comentarios: [],
+        });
+      }
+      taskMap.get(tareaId)!.comentarios.push({
+        id: comentario.id,
+        tipo: comentario.tipo,
+        cuerpo: comentario.cuerpo,
+        createdAt: comentario.createdAt,
+        creadoPorAgente: comentario.creadoPorAgente,
+      });
+    }
+
+    // Convert to array and limit results
+    const items = Array.from(taskMap.values())
+      .sort((a, b) => b.tarea.createdAt.getTime() - a.tarea.createdAt.getTime())
+      .slice(0, limit);
+
+    return {
+      items,
+      total: taskMap.size,
+    };
   }
 
   async getDashboardStats() {
@@ -847,5 +1011,72 @@ export class TareasService {
         } : null,
       },
     };
+  }
+
+  /**
+   * Validate that a state transition is allowed by the flow configuration.
+   * If no flow is configured for the task type, all transitions are allowed.
+   */
+  private async validateStateTransition(
+    tipoTareaId: string,
+    estadoActualId: string | null | undefined,
+    nuevoEstadoId: string,
+    isCliente: boolean
+  ): Promise<void> {
+    // Get the flow for this task type
+    const flow = await this.prisma.tipoTareaEstadoFlow.findUnique({
+      where: { tipoTareaId },
+      include: {
+        transiciones: true,
+        estadosPermitidos: true,
+      },
+    });
+
+    // If no flow configured or flow is inactive, allow all transitions
+    if (!flow || !flow.activo) {
+      return;
+    }
+
+    // Check if the new status is in the allowed statuses list
+    const isAllowedStatus = flow.estadosPermitidos.some((ep) => ep.estadoId === nuevoEstadoId);
+    if (!isAllowedStatus) {
+      throw new BadRequestException("El estado seleccionado no esta permitido para este tipo de tarea");
+    }
+
+    // Check visibility for clients
+    if (isCliente) {
+      const estadoConfig = flow.estadosPermitidos.find((ep) => ep.estadoId === nuevoEstadoId);
+      if (estadoConfig && !estadoConfig.visibleCliente) {
+        throw new BadRequestException("El estado seleccionado no esta disponible");
+      }
+    }
+
+    // If no current state, any allowed status is valid (new task)
+    if (!estadoActualId) {
+      return;
+    }
+
+    // If staying in the same state, allow it
+    if (estadoActualId === nuevoEstadoId) {
+      return;
+    }
+
+    // Find the transition from current state to new state
+    const transition = flow.transiciones.find(
+      (t) => t.estadoOrigenId === estadoActualId && t.estadoDestinoId === nuevoEstadoId
+    );
+
+    if (!transition) {
+      throw new BadRequestException("Esta transicion de estado no esta permitida para este tipo de tarea");
+    }
+
+    // Check if the actor type is allowed to make this transition
+    if (isCliente && !transition.permiteCliente) {
+      throw new BadRequestException("No tiene permiso para realizar esta transicion de estado");
+    }
+
+    if (!isCliente && !transition.permiteAgente) {
+      throw new BadRequestException("Esta transicion de estado no esta permitida para agentes");
+    }
   }
 }

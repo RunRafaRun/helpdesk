@@ -110,6 +110,33 @@ infra/
 | `/clientes/:clienteCodigo/ficha` | Client profile view with tabs |
 | `/` (Dashboard) | Statistics dashboard with dynamic priority colors (admin customizable layout) |
 
+### Global Search
+
+The header navigation includes two global search fields available on all authenticated pages:
+
+**Text Search** (`Busqueda de texto...`):
+- Searches in task titles and comment bodies
+- Shows live dropdown with matching results as you type
+- Groups results by task, showing matching comments under each task
+- Highlights matching text in results
+- Click on task to navigate to task detail
+- Click on comment to navigate directly to that comment
+- Debounced search (300ms delay) to avoid excessive API calls
+- Minimum 2 characters to trigger search
+
+**Task Number Search** (`Numero de Tarea...`):
+- Enter task number (e.g., `202512345`) and press Enter
+- Directly navigates to the task if found
+- Shows error tooltip if task not found
+
+**Backend Endpoints**:
+- `GET /tareas/buscar/texto?texto=...&limit=...` - Full-text search in comments and titles
+- `GET /tareas/buscar/numero/:numero` - Find task by numero field
+
+**Frontend Components**:
+- `apps/web/src/components/GlobalSearch.tsx` - Search component with both fields
+- Integrated in `apps/web/src/routes/Shell.tsx` (header navigation)
+
 ### Dashboard Customization
 
 Admins can customize the dashboard layout for all users:

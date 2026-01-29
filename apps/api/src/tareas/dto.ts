@@ -194,3 +194,25 @@ export class ActualizarComentarioDto {
   @IsNotEmpty()
   cuerpo!: string;
 }
+
+export class BuscarTextoDto {
+  @ApiProperty({ description: "Texto a buscar en comentarios y títulos de tareas" })
+  @IsString()
+  @IsNotEmpty()
+  texto!: string;
+
+  @ApiPropertyOptional({ description: "Cantidad de resultados a devolver", default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number = 20;
+}
+
+export class BuscarPorNumeroDto {
+  @ApiProperty({ description: "Número de tarea (formato yyyyNNNNN, ej: 202512345)" })
+  @IsString()
+  @IsNotEmpty()
+  numero!: string;
+}
